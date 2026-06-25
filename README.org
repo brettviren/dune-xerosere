@@ -184,6 +184,43 @@ $ cmake --build builds/envs/gcc15 -j 32
 
 ** Spack umbrella build
 
+Spack can build xerosere packages either in via =spack install= of an environment or =spack develop=.
+
+The =xerosere= Spack environment is a super-set of the =gcc15= one and builds the same way:
+
+#+begin_example
+$ spack -e extern/envs/xerosere concretize -f
+$ spack -e extern/envs/xerosere install -j 32
+#+end_example
+
+For =spack develop= we must do a one-time registration:
+
+#+begin_example
+# fish syntax
+$ for p in arrow-hdf dune-daq-types dune-daq-codec dune-daq-hdf dune-daq-arrow-frame-hdf \
+         phlex-arrow-common phlex-arrow-hdf wire-cell-arrow wire-cell-phlex \
+         wire-cell-phlex-arrow
+    spack -e extern/envs/xerosere develop --path $PWD/devel/$p $p@main
+  end 
+#+end_example
+
+Then concretize
+
+#+begin_example
+$ spack -e extern/envs/xerosere concretize -f
+$ spack -e extern/envs/xerosere install -j 32
+#+end_example
+
+Doing =spack develop= mutates the environment to use the local clones instead of
+pulling fresh from the git remotes.  To go back to the standard build:
+
+#+begin_example
+$ spack -e extern/envs/xerosere undevelop --all
+$ spack -e extern/envs/xerosere concretize -f
+$ spack -e extern/envs/xerosere install -j 32
+#+end_example
+
+
 The umbrella packages are Spack-packaged in https://github.com/brettviren/dune-tdm-spack.
 The require all the other =extern/repos/*=.  See the =.mrconfig= file for a list.  The =dune-xerosere= package pulls in the rest.
 

@@ -4,10 +4,10 @@
 
 [extern/spack]
 checkout = git clone --branch v1.2.0 --depth=2 'https://github.com/spack/spack.git' 'spack'
+skip = [ "$MR_ACTION" = "push" ] || [ "$MR_ACTION" = "commit" ]
 
 [devel/arrow-hdf]
 checkout = git clone 'git@github.com:brettviren/arrow-hdf.git' 'arrow-hdf'
-
 
 [devel/phlex-arrow-common]
 checkout = git clone 'git@github.com:brettviren/phlex-arrow-common.git' 'phlex-arrow-common'
@@ -45,9 +45,11 @@ checkout = git clone 'https://github.com/wirecell/wire-cell-spack.git' 'wire-cel
 
 [extern/repos/fnal_art]
 checkout = git clone 'https://github.com/FNALssi/fnal_art.git' 'fnal_art'
+skip = [ "$MR_ACTION" = "push" ] || [ "$MR_ACTION" = "commit" ]
 
 [extern/repos/phlex-spack-recipes]
 checkout = git clone 'https://github.com/Framework-R-D/phlex-spack-recipes.git' 'phlex-spack-recipes'
+skip = [ "$MR_ACTION" = "push" ] || [ "$MR_ACTION" = "commit" ]
 
 [extern/repos/edep-simphony-spack]
 checkout = git clone 'git@github.com:WireCell/edep-simphony-spack.git' 'edep-simphony-spack'

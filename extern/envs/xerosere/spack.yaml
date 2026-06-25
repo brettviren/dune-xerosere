@@ -24,11 +24,11 @@
 # checkout-relative; clones live in extern/repos/ (managed by mr / .mrconfig).
 spack:
   repos:
-    wirecell:      $spack/../repos/wire-cell-spack/spack_repo/wirecell
-    fnal_art:      $spack/../repos/fnal_art/spack_repo/fnal_art
-    phlex:         $spack/../repos/phlex-spack-recipes/spack_repo/phlex
+    wirecell: $spack/../repos/wire-cell-spack/spack_repo/wirecell
+    fnal_art: $spack/../repos/fnal_art/spack_repo/fnal_art
+    phlex: $spack/../repos/phlex-spack-recipes/spack_repo/phlex
     edep_simphony: $spack/../repos/edep-simphony-spack/edep_simphony/spack_repo/edep_simphony
-    dune_tdm:      $spack/../repos/dune-tdm-spack/spack_repo/dune_tdm
+    dune_tdm: $spack/../repos/dune-tdm-spack/spack_repo/dune_tdm
 
   specs:
   - group: bootstrap
@@ -69,3 +69,4 @@ spack:
       root: view              # -> extern/envs/xerosere/view
       group: [main, apps]     # expose toolchain + apps; bootstrap stays out
       link: all               # roots + transitive run+link deps (headers/libs for dev)
+  develop: {}
