@@ -1,0 +1,54 @@
+# myrepos / mr configuration for xerosere
+
+# Most likely you must list the path to this file in your ~/.mrtrust file.
+
+[extern/spack]
+checkout = git clone --branch v1.2.0 --depth=2 'https://github.com/spack/spack.git' 'spack'
+
+[devel/arrow-hdf]
+checkout = git clone 'git@github.com:brettviren/arrow-hdf.git' 'arrow-hdf'
+
+
+[devel/phlex-arrow-common]
+checkout = git clone 'git@github.com:brettviren/phlex-arrow-common.git' 'phlex-arrow-common'
+
+[devel/wire-cell-arrow]
+checkout = git clone 'git@github.com:WireCell/wire-cell-arrow.git' 'wire-cell-arrow'
+
+[devel/wire-cell-phlex]
+checkout = git clone 'git@github.com:brettviren/wire-cell-phlex.git' 'wire-cell-phlex'
+
+[devel/wire-cell-phlex-arrow]
+checkout = git clone 'git@github.com:brettviren/wire-cell-phlex-arrow.git' 'wire-cell-phlex-arrow'
+
+[devel/dune-daq-arrow-frame-hdf]
+checkout = git clone 'git@github.com:brettviren/dune-daq-arrow-frame-hdf.git' 'dune-daq-arrow-frame-hdf'
+
+[devel/dune-daq-codec]
+checkout = git clone 'git@github.com:brettviren/dune-daq-codec.git' 'dune-daq-codec'
+
+[devel/dune-daq-hdf]
+checkout = git clone 'git@github.com:brettviren/dune-daq-hdf.git' 'dune-daq-hdf'
+
+[devel/dune-daq-types]
+checkout = git clone 'git@github.com:brettviren/dune-daq-types.git' 'dune-daq-types'
+
+[devel/phlex-arrow-hdf]
+checkout = git clone 'git@github.com:brettviren/phlex-arrow-hdf.git' 'phlex-arrow-hdf'
+
+# Spack package recipe repos (referenced by extern/envs/*/spack.yaml repos:).
+# wire-cell-spack must have highest repo precedence (listed first in spack.yaml)
+# to override commonly-named packages from the other repos and builtin.
+[extern/repos/wire-cell-spack]
+checkout = git clone 'https://github.com/wirecell/wire-cell-spack.git' 'wire-cell-spack'
+
+[extern/repos/fnal_art]
+checkout = git clone 'https://github.com/FNALssi/fnal_art.git' 'fnal_art'
+
+[extern/repos/phlex-spack-recipes]
+checkout = git clone 'https://github.com/Framework-R-D/phlex-spack-recipes.git' 'phlex-spack-recipes'
+
+# Old-layout repo: after cloning, run `spack repo migrate --fix` on
+# extern/repos/edep-simphony-spack/edep_simphony to upgrade it to Package API v2.
+[extern/repos/edep-simphony-spack]
+checkout = git clone 'git@github.com:WireCell/edep-simphony-spack.git' 'edep-simphony-spack'

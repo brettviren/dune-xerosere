@@ -1,0 +1,175 @@
+#+title: DUNE Xerosere umbrella project for new Phlex based ecosystem
+
+This is the working title for the new Phlex-based DUNE software ecosystem that I
+am developing.  The name is of course a play on "DUNE".  From wikipedia:
+
+#+begin_quote
+A [[https://en.wikipedia.org/wiki/Psammosere][psammosere]] is the sequence of plant succession that has been initiated on
+sand.  A psammosere is an intermediate stage in ecological succession, known as
+a seral community, that begins life on newly exposed coastal sand. The most
+common psammoseres are sand dune systems. Psammosere is a form of xerosere
+succession, meaning it begins in an environment with limited to no freshwater
+availability.
+
+[[https://en.wikipedia.org/wiki/Xerosere][Xerosere]] is a plant succession that is limited by water availability. It
+includes the different stages in a xerarch succession. Xerarch succession of
+ecological communities originated in extremely dry situation such as sand
+deserts, sand dunes, salt deserts, rock deserts etc. A xerosere may include
+lithoseres (on rock) and psammoseres (on sand).
+#+end_quote
+
+It's apt because Phlex currently lacks "water" and yet we must grow an entire
+dune ecosystem on it.
+
+Punironically, this package provides an "umbrella" to cover this new ecosystem.
+
+One goal is *well factored* packages.  Dumping grounds lead to dependency
+aggregation and tight interdependencies between code: classic spaghetti.  Better
+factoring comes with a natural cost of needing more and smaller packages that
+are split along dependency lines.  DUNE Xerosere embraces this by exploiting
+Spack for final deployment and CMake "super package" building for local
+development.  The source packages under development are aggregated in this
+umbrella as are other packages used for code reference.  All code covered by the
+xerosere umbrella is new and not dependent on past art/larsoft ecosystem.
+
+Here are the major components of this xerosere umbrella:
+
+- Uses =mr= (myrepos) for code aggregation and management.
+- Spack 1.2+ provides dependencies and environment view. 
+- A CMake umbrella "super build" to build all the new packages.
+- Various development tools, artifacts, docs.
+
+* Bootstrapping
+
+** Clone
+
+#+begin_example
+$ git clone git@github.com:brettviren/dune-xerosere.git dune/xerosere
+$ cd dune/xerosere
+#+end_example
+
+** OS
+
+Debian 12
+
+#+begin_example
+  # apt-get install -y \
+      autoconf bash build-essential ca-certificates clang coreutils curl direnv \
+      emacs extrepo fd-find gfortran git gpg jq less llvm locales lsb-release man-db \
+      myrepos python-is-python3 python3 python3-click python3-setuptools python3-venv \
+      python3-yaml ripgrep sudo unzip wget zip zlib1g-dev
+  # extrepo enable mise && apt-get update && apt-get install -y mise
+#+end_example
+
+Inclusion of =mise= helps bring in some other tools like claude.
+
+** Git
+
+Xerosere provides an =mr= (=myrepos=) file [[file:.mrconfig]] to aggregate and later
+manage the various sources in this umbrella.  The path =.mrconfig= will need to be
+listed in your =~/.mrtrusted= file.  Then, in a fresh clone of this package, run:
+
+#+begin_example
+$ mr co
+#+end_example
+
+This clones:
+
+- The source for the actual packages covered by xerosere
+- Spack and Spack package repos for WCT, Phlex and edep(sim)phony
+
+** Direnv
+
+Xerosere provides a direnv [[file:.envrc]] to auto configure a small amount of shell
+environment.  If not used, it still provides the guidance on what shell
+environment must be configured.  Otherwise, see how to [[https://direnv.net/docs/hook.html][hook]] direnv into your
+shell and then type:
+
+#+begin_example
+$ direnv allow
+#+end_example
+
+** Spack
+
+Xerosere jumps on the recently released [[https://spack.readthedocs.io/en/v1.2.0/][Spack 1.2]] to make use of parallel
+builds, concretization groups and +isolation+ (still better handled by env vars).
+
+The =mr co= clones the Spack source and the direnv integration puts =spack= in your
+path and sets variables so that Spack will not touch =~/.spack/=.  Everything ends
+up under =extern/=.  The full Spack shell environment is not entered and in
+particular the =spack= command remains real and not a shell function/alias.
+
+#+begin_example
+$ spack --version
+1.2.0 (63962ed90680d339004305075da272ae93c04a41)
+#+end_example
+
+** CUDA
+
+Best to use "system cuda" which may be under =/usr/= or =/usr/local/= instead of
+having Spack build it which is fragile.  Before going on to the next section,
+register your system cuda with:
+
+#+begin_example
+$ spack external find --scope user --not-buildable -p /usr/local/cuda-12.5 cuda
+#+end_example
+- =--scope user= writes to extern/scopes/user/packages.yaml (alongside your gcc/llvm externals).
+- =-p /usr/local/cuda-12.5= points at the 12.5 toolkit so it doesn't grab the 11.8 on PATH.
+- =--not-buildable= sets =buildable: false= for cuda, so Spack will never try the runfile again
+
+** Spack Environments
+
+These are documented here
+
+https://spack.readthedocs.io/en/v1.2.0/environments_basics.html
+https://spack.readthedocs.io/en/v1.2.0/environments.html
+
+Xerosere provides Spack Environment configurations in =extern/envs/*/spack.yaml=.
+You can see the concrete spec and build it with:
+
+#+begin_example
+$ spack -e extern/envs/gcc15 concretize -f
+$ spack -e extern/envs/gcc15 install -j 32
+#+end_example
+
+This duo is also what is run when changes are made to the environment's
+=spack.yaml= or to a Spack package repo.
+
+When installing iwth Spack 1.2, enjoy the new TUI with these keys: =n= / =p= to
+cycle which one shows log output or =v= to cycle between log output and
+per-package spinner.
+
+The full build will take a while, depending on hardware.  Be sure to do it on
+fast storage.  You can give it more cores if you have them.  On BNL's =wcgpu= it
+takes about 30 minutes.  Intermittent failures due to upstream source servers
+not answering can be expected.
+
+* Developer tasks
+
+** Update Spack packages for new versions
+
+If you know the version, fastest is:
+
+#+begin_example
+$ spack -e extern/envs/gcc15 checksum -a edepsim 4.2.0
+#+end_example
+
+We leverage the spack env because the repo is registered with it.  It is
+possible to register them global to the user scope with the following, but we'll
+avoid that for now:
+
+#+begin_example
+$ spack repo add --scope user extern/repos/edep-simphony-spack/edep_simphony/spack_repo/edep_simphony
+#+end_example
+
+After a change:
+
+#+begin_example
+$ spack -e extern/envs/gcc15 concretize -f
+$ spack -e extern/envs/gcc15 install -j 32
+#+end_example
+
+
+
+
+

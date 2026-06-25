@@ -1,0 +1,62 @@
+# Independent Spack environment: two-stage gcc@15 + app stack, coherent gcc-runtime.
+#
+# Activate from the repo root with:   spack -e extern/envs/gcc15 <cmd>
+#   spack -e extern/envs/gcc15 concretize -f
+#   spack -e extern/envs/gcc15 install
+#
+# Design notes (verified against Spack 1.2.0):
+#  * gcc-runtime tracks the compiler that BUILT a node. Stage-1 gcc@15 (built by
+#    the host gcc) carries gcc-runtime@11.3.0; stage-2 gcc@15 (built BY stage-1)
+#    carries gcc-runtime@15. The two groups (bootstrap -> main) express that, and
+#    'needs:' makes stage-1 available as the %gcc@15 compiler for the main group.
+#  * Downstream groups 'needs: [main]' so they build with the stage-2 (main)
+#    gcc@15 and reuse its gcc-runtime@15 -- never the throwaway bootstrap gcc.
+#  * The bootstrap stage (and gcc's host-built lib deps) still pull
+#    gcc-runtime@11.3.0 into the STORE -- unavoidable in 1.2.0 because per-group
+#    'override:' currently crashes the solver. It does NOT pollute the VIEW:
+#    Spack keeps only the newest runtime (environment.py:_exclude_duplicate_runtimes).
+#
+# Repos: precedence is "first wins". 'wirecell' is listed FIRST so it overrides
+# commonly-named packages from fnal_art / phlex / builtin (builtin is implicit,
+# lowest). Paths are $spack-relative (== extern/spack) so the manifest stays
+# checkout-relative; clones live in extern/repos/ (managed by mr / .mrconfig).
+spack:
+  repos:
+    wirecell:      $spack/../repos/wire-cell-spack/spack_repo/wirecell
+    fnal_art:      $spack/../repos/fnal_art/spack_repo/fnal_art
+    phlex:         $spack/../repos/phlex-spack-recipes/spack_repo/phlex
+    edep_simphony: $spack/../repos/edep-simphony-spack/edep_simphony/spack_repo/edep_simphony
+
+  specs:
+  - group: bootstrap
+    explicit: false          # implicit -> GC-eligible; the throwaway stage-1
+    specs:
+    - gcc@15                  # built by host gcc; runtime = gcc-runtime@11.3.0
+
+  - group: main
+    needs: [bootstrap]
+    specs:
+    - gcc@15 %gcc@15          # rebuilt by stage-1; runtime = gcc-runtime@15
+    - libelf %gcc@15          # built by stage-2; shares that gcc-runtime@15
+
+  - group: apps
+    needs: [main]            # built with the stage-2 (main) gcc@15
+    specs:
+    # One shared 'root' carrying every consumer's variants at cxxstd=23:
+    #   +root7 (phlex+form) +geom (edepsim) +tmva+minuit+python+fftw+spectrum (WCT)
+    #   +arrow+tmva+xrootd (requested) ; +opengl for edepsim's Eve (pulls a 2nd llvm).
+    # - root +root7 +geom +arrow +tmva +xrootd +minuit +python +fftw +spectrum +opengl cxxstd=23 %gcc@15
+    - root +arrow %gcc@15
+    - phlex@0.2.0 +form %gcc@15
+    - wire-cell-toolkit@0.36.1 +hdf +root cxxstd=23 %gcc@15
+    - edepsim cxxstd=23 %gcc@15
+    - simphony cxxstd=23 %gcc@15   # 23 so its geant4 unifies with edepsim's (simphony's own code still C++17 per its CMakeLists)
+
+  concretizer:
+    unify: true               # within a group; one gcc-runtime@15 per group
+
+  view:
+    default:
+      root: view              # -> extern/envs/gcc15/view
+      group: [main, apps]     # expose toolchain + apps; bootstrap stays out
+      link: all               # roots + transitive run+link deps (headers/libs for dev)
