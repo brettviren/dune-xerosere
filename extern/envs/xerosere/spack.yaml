@@ -1,8 +1,10 @@
-# Independent Spack environment: two-stage gcc@15 + app stack, coherent gcc-runtime.
+# Independent Spack environment "xerosere": the gcc15 env plus the dune-xerosere
+# TDM suite (the locally-developed packages, via the dune_tdm repo). Two-stage
+# gcc@15 + app stack, coherent gcc-runtime.
 #
-# Activate from the repo root with:   spack -e extern/envs/gcc15 <cmd>
-#   spack -e extern/envs/gcc15 concretize -f
-#   spack -e extern/envs/gcc15 install
+# Activate from the repo root with:   spack -e extern/envs/xerosere <cmd>
+#   spack -e extern/envs/xerosere concretize -f
+#   spack -e extern/envs/xerosere install
 #
 # Design notes (verified against Spack 1.2.0):
 #  * gcc-runtime tracks the compiler that BUILT a node. Stage-1 gcc@15 (built by
@@ -26,6 +28,7 @@ spack:
     fnal_art:      $spack/../repos/fnal_art/spack_repo/fnal_art
     phlex:         $spack/../repos/phlex-spack-recipes/spack_repo/phlex
     edep_simphony: $spack/../repos/edep-simphony-spack/edep_simphony/spack_repo/edep_simphony
+    dune_tdm:      $spack/../repos/dune-tdm-spack/spack_repo/dune_tdm
 
   specs:
   - group: bootstrap
@@ -49,6 +52,12 @@ spack:
     - wire-cell-toolkit@0.36.1 +hdf +root cxxstd=23 %gcc@15
     - edepsim cxxstd=23 %gcc@15
     - simphony cxxstd=23 %gcc@15
+    # The locally-developed TDM suite (dune_tdm repo). A bundle has no compiler of
+    # its own (so no %gcc@15 here); its member packages take the compiler below.
+    # NOTE: Spack builds these from each repo's github 'main' branch, NOT the
+    # working copies under devel/ -- push local changes, or `spack develop` a
+    # package to build its devel/ checkout.
+    - dune-xerosere
     - cmake@3.31
     - ninja
 
@@ -57,6 +66,6 @@ spack:
 
   view:
     default:
-      root: view              # -> extern/envs/gcc15/view
+      root: view              # -> extern/envs/xerosere/view
       group: [main, apps]     # expose toolchain + apps; bootstrap stays out
       link: all               # roots + transitive run+link deps (headers/libs for dev)

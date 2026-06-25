@@ -16,7 +16,7 @@
 # package's project() name.  We scan the CMakeLists.txt files for both and
 # intersect.  External deps (WireCell, phlex, Arrow, HDF5, TBB, Boost, spdlog)
 # are the find_package names that match no sibling; they come from
-# CMAKE_PREFIX_PATH (the Spack view under ../local).
+# CMAKE_PREFIX_PATH (eg as provided by a Spack view direcotry).
 #
 # Usage:
 #   cmake -S devel -B builds/devel [-DCMAKE_INSTALL_PREFIX=...]
@@ -64,6 +64,10 @@ set(XEROSERE_FORWARDED_CACHE_ARGS
   -DCMAKE_C_COMPILER:STRING=${CMAKE_C_COMPILER}
   -DCMAKE_CXX_STANDARD:STRING=${CMAKE_CXX_STANDARD}
   -DBUILD_SHARED_LIBS:BOOL=${BUILD_SHARED_LIBS}
+  # CMake >=3.30 removed the bundled FindBoost module (policy CMP0167). Default
+  # it to NEW so sub-packages' find_package(Boost ...) use Boost's own config
+  # (BoostConfig) from the Spack view instead of warning about the dead module.
+  -DCMAKE_POLICY_DEFAULT_CMP0167:STRING=NEW
   # Installed binaries/libs must locate their siblings (in the shared prefix's
   # lib) AND the external Spack-view libs at runtime. Bake an install RPATH:
   #   * the shared lib dir explicitly (so e.g. bin/daq_hdf_to_arrow finds

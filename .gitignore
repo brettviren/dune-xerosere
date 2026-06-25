@@ -5,5 +5,9 @@ extern/*
 !extern/envs/
 !extern/envs/*
 extern/envs/*/.spack-env
+extern/envs/*/spack.lock
 extern/envs/*/view
+builds
+deps.*
+installs
 

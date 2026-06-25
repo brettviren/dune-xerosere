@@ -36,6 +36,7 @@ checkout = git clone 'git@github.com:brettviren/dune-daq-types.git' 'dune-daq-ty
 [devel/phlex-arrow-hdf]
 checkout = git clone 'git@github.com:brettviren/phlex-arrow-hdf.git' 'phlex-arrow-hdf'
 
+
 # Spack package recipe repos (referenced by extern/envs/*/spack.yaml repos:).
 # wire-cell-spack must have highest repo precedence (listed first in spack.yaml)
 # to override commonly-named packages from the other repos and builtin.
@@ -48,7 +49,8 @@ checkout = git clone 'https://github.com/FNALssi/fnal_art.git' 'fnal_art'
 [extern/repos/phlex-spack-recipes]
 checkout = git clone 'https://github.com/Framework-R-D/phlex-spack-recipes.git' 'phlex-spack-recipes'
 
-# Old-layout repo: after cloning, run `spack repo migrate --fix` on
-# extern/repos/edep-simphony-spack/edep_simphony to upgrade it to Package API v2.
 [extern/repos/edep-simphony-spack]
 checkout = git clone 'git@github.com:WireCell/edep-simphony-spack.git' 'edep-simphony-spack'
+
+[extern/repos/dune-tdm-spack]
+checkout = git clone 'git@github.com:brettviren/dune-tdm-spack.git' 'dune-tdm-spack'

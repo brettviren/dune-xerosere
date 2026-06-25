@@ -169,7 +169,22 @@ $ spack -e extern/envs/gcc15 concretize -f
 $ spack -e extern/envs/gcc15 install -j 32
 #+end_example
 
+** Local umbrella build
 
+#+begin_example
+$ cmake -S devel -B builds/envs/gcc15 \
+    -DCMAKE_C_COMPILER=$PWD/extern/envs/gcc15/view/bin/gcc \
+    -DCMAKE_CXX_COMPILER=$PWD/extern/envs/gcc15/view/bin/g++ \
+    -DCMAKE_PREFIX_PATH=$PWD/extern/envs/gcc15/view \
+    -DCMAKE_INSTALL_PREFIX=$PWD/installs/envs/gcc15 \
+    -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=23
+$ cmake --build builds/envs/gcc15 -j 32
 
+#+end_example
+
+** Spack umbrella build
+
+The umbrella packages are Spack-packaged in https://github.com/brettviren/dune-tdm-spack.
+The require all the other =extern/repos/*=.  See the =.mrconfig= file for a list.  The =dune-xerosere= package pulls in the rest.
 
 
