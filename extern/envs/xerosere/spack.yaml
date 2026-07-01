@@ -49,6 +49,7 @@ spack:
     # For now, while we only do local dev builds, we add root +arrow explicitly as a way to get arrow included.
     - root +arrow %gcc@15
     - phlex@0.2.0 +form %gcc@15
+    - phlexed %gcc@15        # phlex CLI variant with Jsonnet TLA + jpath support
     - wire-cell-toolkit@0.36.1 +hdf +root cxxstd=23 %gcc@15
     - edepsim cxxstd=23 %gcc@15
     - simphony cxxstd=23 %gcc@15
@@ -60,6 +61,17 @@ spack:
     - dune-xerosere
     - cmake@3.31
     - ninja
+
+  packages:
+    # Jsonnet engine selection. `libjsonnet` is a virtual provided by
+    # go-jsonnet (pure-Go, much faster on large configs) and by the C/C++
+    # `jsonnet` package. Default the whole suite to go-jsonnet; it builds the
+    # libjsonnet++ wrapper against its own engine, so phlex/phlexed (which link
+    # that wrapper) use go-jsonnet unchanged. To fall back to the C engine,
+    # set the provider below to `jsonnet`.
+    all:
+      providers:
+        libjsonnet: [go-jsonnet]
 
   concretizer:
     unify: true               # within a group; one gcc-runtime@15 per group

@@ -1,0 +1,132 @@
+#!/usr/bin/env bash
+#
+# umbrella - drive the CMake "super-build" (devel/CMakeLists.txt) or a single
+# package under devel/ for a given Spack environment.
+#
+# Usage:
+#   umbrella <env> config|build [options] [<package> ...]
+#
+# <env> selects a Spack environment and thus these locations (relative to the
+# project root, which is the directory holding this script):
+#
+#   extern/envs/<env>/view/   dependency prefix (compilers + find_package deps)
+#   builds/envs/<env>/        build products (super-build tree)
+#   installs/envs/<env>/      shared install prefix
+#
+# Subcommands:
+#   config   run "cmake -S ... -B ..." (the configure step)
+#   build    run "cmake --build ..."   (the build step)
+#
+# With no <package>, the subcommand operates on the whole super-build.
+#
+# With one or more <package> (sub-directory names under devel/), the subcommand
+# operates on just those package(s), configured/built stand-alone into
+# builds/envs/<env>/<package>/.  Their in-tree dependencies must already be
+# installed into installs/envs/<env>/ (run the whole-project build first, or
+# list the dependencies too) since they are located via find_package(CONFIG).
+#
+# [options] are any arguments beginning with "-"; they are appended verbatim to
+# the underlying cmake command.  A bare token (e.g. the "32" in "-j 32") that is
+# not a devel/ sub-directory is also passed through to cmake, so both
+# "build -j 32" and "build -j32" work.
+#
+set -euo pipefail
+
+self="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+root="$self"
+
+die()   { echo "umbrella: $*" >&2; exit 1; }
+usage() {
+    # print the leading comment block (skip the shebang, stop at first non-# line)
+    awk 'NR==1{next} /^#/{sub(/^# ?/,""); if($0=="" && !seen)next; seen=1; print; next} {exit}' "$0"
+    exit "${1:-0}"
+}
+
+# --- parse leading positional arguments -------------------------------------
+[ $# -ge 1 ] || usage 1
+case "$1" in
+    -h|--help) usage 0 ;;
+esac
+env="$1"; shift
+
+[ $# -ge 1 ] || die "missing subcommand (config|build); see --help"
+sub="$1"; shift
+case "$sub" in
+    config|build) ;;
+    *) die "unknown subcommand '$sub' (expected config or build)" ;;
+esac
+
+# --- environment-derived locations ------------------------------------------
+view="$root/extern/envs/$env/view"
+build="$root/builds/envs/$env"
+install="$root/installs/envs/$env"
+
+[ -d "$root/extern/envs/$env" ] || die "no such environment: extern/envs/$env"
+[ -x "$view/bin/g++" ] || die "environment view not built: $view/bin/g++ missing (build the Spack env first)"
+
+# --- split remaining args into cmake options and package names --------------
+opts=()
+pkgs=()
+for arg in "$@"; do
+    if [[ "$arg" == -* ]]; then
+        opts+=("$arg")
+    elif [ -d "$root/devel/$arg" ]; then
+        pkgs+=("$arg")
+    else
+        # not a devel/ sub-directory: treat as a cmake argument (e.g. -j 32)
+        echo "umbrella: '$arg' is not a devel/ package; passing to cmake" >&2
+        opts+=("$arg")
+    fi
+done
+
+# Common configure flags shared by super-build and per-package builds.
+config_flags=(
+    -DCMAKE_C_COMPILER="$view/bin/gcc"
+    -DCMAKE_CXX_COMPILER="$view/bin/g++"
+    -DCMAKE_INSTALL_PREFIX="$install"
+    -DCMAKE_BUILD_TYPE=Release
+    -DCMAKE_CXX_STANDARD=23
+)
+
+run() { echo "+ $*" >&2; "$@"; }
+
+# --- whole super-build (no packages listed) ---------------------------------
+if [ ${#pkgs[@]} -eq 0 ]; then
+    case "$sub" in
+        config)
+            run cmake -S "$root/devel" -B "$build" \
+                "${config_flags[@]}" \
+                -DCMAKE_PREFIX_PATH="$view" \
+                "${opts[@]}"
+            ;;
+        build)
+            run cmake --build "$build" "${opts[@]}"
+            ;;
+    esac
+    exit 0
+fi
+
+# --- one or more specific packages ------------------------------------------
+# Stand-alone configure/build per package into builds/envs/<env>/<package>/.
+# Siblings are found via CMAKE_PREFIX_PATH: the shared install prefix (already
+# installed siblings) followed by the Spack view (external deps).  RPATH flags
+# mirror the super-build so stand-alone installs also run in place.
+for pkg in "${pkgs[@]}"; do
+    src="$root/devel/$pkg"
+    pbuild="$build/$pkg"
+    case "$sub" in
+        config)
+            run cmake -S "$src" -B "$pbuild" \
+                "${config_flags[@]}" \
+                -DCMAKE_PREFIX_PATH="$install;$view" \
+                -DCMAKE_POLICY_DEFAULT_CMP0167=NEW \
+                -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=TRUE \
+                -DCMAKE_INSTALL_RPATH="$install/lib;$install/lib64" \
+                "${opts[@]}"
+            ;;
+        build)
+            [ -d "$pbuild" ] || die "package '$pkg' not configured: run 'umbrella $env config $pkg' first"
+            run cmake --build "$pbuild" "${opts[@]}"
+            ;;
+    esac
+done

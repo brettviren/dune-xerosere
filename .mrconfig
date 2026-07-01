@@ -21,6 +21,9 @@ checkout = git clone 'git@github.com:brettviren/wire-cell-phlex.git' 'wire-cell-
 [devel/wire-cell-phlex-arrow]
 checkout = git clone 'git@github.com:brettviren/wire-cell-phlex-arrow.git' 'wire-cell-phlex-arrow'
 
+[devel/dune-config]
+checkout = git clone 'git@github.com:brettviren/dune-config.git' 'dune-config'
+
 [devel/dune-daq-arrow-frame-hdf]
 checkout = git clone 'git@github.com:brettviren/dune-daq-arrow-frame-hdf.git' 'dune-daq-arrow-frame-hdf'
 
@@ -36,12 +39,15 @@ checkout = git clone 'git@github.com:brettviren/dune-daq-types.git' 'dune-daq-ty
 [devel/phlex-arrow-hdf]
 checkout = git clone 'git@github.com:brettviren/phlex-arrow-hdf.git' 'phlex-arrow-hdf'
 
+[devel/phlexed]
+checkout = git clone 'git@github.com:brettviren/phlexed.git' 'phlexed'
+
 
 # Spack package recipe repos (referenced by extern/envs/*/spack.yaml repos:).
 # wire-cell-spack must have highest repo precedence (listed first in spack.yaml)
 # to override commonly-named packages from the other repos and builtin.
 [extern/repos/wire-cell-spack]
-checkout = git clone 'https://github.com/wirecell/wire-cell-spack.git' 'wire-cell-spack'
+checkout = git clone 'git@github.com:wirecell/wire-cell-spack.git' 'wire-cell-spack'
 
 [extern/repos/fnal_art]
 checkout = git clone 'https://github.com/FNALssi/fnal_art.git' 'fnal_art'
@@ -49,7 +55,7 @@ skip = [ "$MR_ACTION" = "push" ] || [ "$MR_ACTION" = "commit" ]
 
 [extern/repos/phlex-spack-recipes]
 checkout = git clone 'https://github.com/Framework-R-D/phlex-spack-recipes.git' 'phlex-spack-recipes'
-skip = [ "$MR_ACTION" = "push" ] || [ "$MR_ACTION" = "commit" ]
+# skip = [ "$MR_ACTION" = "push" ] || [ "$MR_ACTION" = "commit" ]
 
 [extern/repos/edep-simphony-spack]
 checkout = git clone 'git@github.com:WireCell/edep-simphony-spack.git' 'edep-simphony-spack'

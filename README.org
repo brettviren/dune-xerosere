@@ -23,30 +23,23 @@ dune ecosystem on it.
 
 Punironically, this package provides an "umbrella" to cover this new ecosystem.
 
-One goal is *well factored* packages.  Dumping grounds lead to dependency
-aggregation and tight interdependencies between code: classic spaghetti.  Better
-factoring comes with a natural cost of needing more and smaller packages that
-are split along dependency lines.  DUNE Xerosere embraces this by exploiting
-Spack for final deployment and CMake "super package" building for local
-development.  The source packages under development are aggregated in this
-umbrella as are other packages used for code reference.  All code covered by the
-xerosere umbrella is new and not dependent on past art/larsoft ecosystem.
+One goal of xerosere is that packages are *well factored*.  Dumping ground
+packages lead to dependency aggregation and tight interdependencies between
+code: classic spaghetti.  Better factoring comes with a natural cost of more and
+smaller packages that are split along dependency lines.  This takes effort to
+produce by the developers and can lead to more effort for builders/installers.
+To solve the latter problem, DUNE Xerosere exploits Spack for deployment build
+and CMake "super package" pattern for local development.  Examples below
+describe how to exercise both aggregate build methods.
 
-Here are the major components of this xerosere umbrella:
+Here are the major building blocks of th DUNE xerosere umbrella:
 
-- Uses =mr= (myrepos) for code aggregation and management.
-- Spack 1.2+ provides dependencies and environment view. 
+- Source repos are aggregated and manasged with =mr= (myrepos).
+- Spack 1.2+ in =extern/spack/= provides build, dependencies and environment view. 
+- Spack package repos in =extern/repos/= augment Spack's =builtins=.
 - A CMake umbrella "super build" to build all the new packages.
-- Various development tools, artifacts, docs.
 
 * Bootstrapping
-
-** Clone
-
-#+begin_example
-$ git clone git@github.com:brettviren/dune-xerosere.git dune/xerosere
-$ cd dune/xerosere
-#+end_example
 
 ** OS
 
@@ -63,10 +56,19 @@ Debian 12
 
 Inclusion of =mise= helps bring in some other tools like claude.
 
+Given the portability of Phlex and xerosere packages, other OSes should pose no problems.
+
 ** Git
 
-Xerosere provides an =mr= (=myrepos=) file [[file:.mrconfig]] to aggregate and later
-manage the various sources in this umbrella.  The path =.mrconfig= will need to be
+Clone this package.
+
+#+begin_example
+$ git clone git@github.com:brettviren/dune-xerosere.git dune/xerosere
+$ cd dune/xerosere
+#+end_example
+
+Xerosere provides an =mr= (=myrepos=) file [[file:.mrconfig]] to aggregate and manage
+the other various sources in this umbrella.  The path =.mrconfig= will need to be
 listed in your =~/.mrtrusted= file.  Then, in a fresh clone of this package, run:
 
 #+begin_example
@@ -78,21 +80,29 @@ This clones:
 - The source for the actual packages covered by xerosere
 - Spack and Spack package repos for WCT, Phlex and edep(sim)phony
 
+Note: =mr= is not required nor is the particular layout or other conventions in
+xerosere.  They are merely the conveniences that remain after other approaches
+were considered and discarded.
+
 ** Direnv
 
-Xerosere provides a direnv [[file:.envrc]] to auto configure a small amount of shell
-environment.  If not used, it still provides the guidance on what shell
-environment must be configured.  Otherwise, see how to [[https://direnv.net/docs/hook.html][hook]] direnv into your
-shell and then type:
+Xerosere provides a shell-independent direnv file [[file:.envrc]] to auto configure
+a small amount of shell environment.  If not used, it still provides the
+guidance on what shell environment must be configured.  Otherwise, see how to
+[[https://direnv.net/docs/hook.html][hook]] direnv into your shell and then type:
 
 #+begin_example
 $ direnv allow
 #+end_example
 
+It is not required to use direnv and the =.envrc= file can be easily translated
+into other environment setup methods.
+
 ** Spack
 
 Xerosere jumps on the recently released [[https://spack.readthedocs.io/en/v1.2.0/][Spack 1.2]] to make use of parallel
-builds, concretization groups and +isolation+ (still better handled by env vars).
+builds, concretization groups and +isolation+ (still better handled by setting
+Spack's scope-related env vars).
 
 The =mr co= clones the Spack source and the direnv integration puts =spack= in your
 path and sets variables so that Spack will not touch =~/.spack/=.  Everything ends
@@ -116,6 +126,13 @@ $ spack external find --scope user --not-buildable -p /usr/local/cuda-12.5 cuda
 - =--scope user= writes to extern/scopes/user/packages.yaml (alongside your gcc/llvm externals).
 - =-p /usr/local/cuda-12.5= points at the 12.5 toolkit so it doesn't grab the 11.8 on PATH.
 - =--not-buildable= sets =buildable: false= for cuda, so Spack will never try the runfile again
+
+However CUDA is provided, keep in mind that the version of nvidia driver for the
+Linux kernel sets a range of CUDA toolkit version which sets a range of GCC
+version which sets an upper bound for C++ standard version.  In some cases,
+(CUDA 12.x with Phlex needing C++23) one must have two compilers, one to use as
+a nvcc backend and one to compile C++23 code.  Xerosere Spack environments and
+packaging support this compiler hybridization.
 
 ** Spack Environments
 
@@ -162,7 +179,7 @@ avoid that for now:
 $ spack repo add --scope user extern/repos/edep-simphony-spack/edep_simphony/spack_repo/edep_simphony
 #+end_example
 
-After a change:
+When an older version is built, spack concretization may prefer it to a new one.  In which case the env's =spack.yaml= can be modified to set the desired version.  Then:
 
 #+begin_example
 $ spack -e extern/envs/gcc15 concretize -f
@@ -170,6 +187,9 @@ $ spack -e extern/envs/gcc15 install -j 32
 #+end_example
 
 ** Local umbrella build
+
+This builds with CMake, using the "gcc15" environment view to provide
+dependencies, the umbrella's packages.
 
 #+begin_example
 $ cmake -S devel -B builds/envs/gcc15 \
@@ -179,7 +199,12 @@ $ cmake -S devel -B builds/envs/gcc15 \
     -DCMAKE_INSTALL_PREFIX=$PWD/installs/envs/gcc15 \
     -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=23
 $ cmake --build builds/envs/gcc15 -j 32
+#+end_example
 
+Builds go to =builds/envs/gcc15/= and installs go to =installs/envs/gcc15/=
+
+#+begin_example
+$ ./installs/envs/gcc15/bin/phlexed  --help
 #+end_example
 
 ** Spack umbrella build
