@@ -1,0 +1,41 @@
+# plugin_gpu_test.mac — self-contained edep-sim run that exercises the
+# edep-simphony-plugin GPU optical path (ddm-p5j.6).
+#
+# Driven by tests/gpu/run_plugin_gpu_test.sh, which sets the runtime env
+# (EXTRAPHYSICS, PLUGIN_LIB, OPTICKS_*) from the Spack-installed plugin's
+# setup_run_environment and passes -p/-g/-o/-e on the command line.
+#
+# Unlike the plugin's shipped run_3gev_electron.mac this inlines the action
+# loading (from simphony_plugin.mac) so it does not depend on a relative
+# /control/execute path.
+#
+# NOTE: the particle-gun position/energy below must put the beam inside the
+# fixture geometry's active LAr volume.  They are defaults tuned for a
+# ~1 m LAr box; adjust to match the geometry provided by ddm-p5j.5.
+
+/run/verbose 1
+
+# Finalize geometry and initialize (EXTRAPHYSICS is applied before this).
+/edep/update
+/run/initialize
+
+# Load the GPU optical plugin actions (must come after /run/initialize).
+# Order matters: RunAction first, then EventAction, then StepAction — each
+# factory stashes a static pointer for the next.
+/edep/actions/loadUserRunAction   $(PLUGIN_LIB) CreateUserRunAction   unspecified
+/edep/actions/loadUserEventAction $(PLUGIN_LIB) CreateUserEventAction unspecified
+/edep/actions/loadUserStepAction  $(PLUGIN_LIB) CreateUserStepAction  unspecified
+
+# Keep optical photons killed on CPU — the GPU handles all transport.
+/process/optical/scintillation/setStackPhotons false
+/process/optical/cerenkov/setStackPhotons false
+
+# Particle gun: an electron travelling +z through the active volume.  A higher
+# energy yields plenty of scintillation light so GPUPhotonHits is clearly
+# non-empty.
+/gps/particle e-
+/gps/energy 100 MeV
+/gps/position 0 0 -400 mm
+/gps/direction 0 0 1
+
+# Events are launched by edep-sim's -e flag; do not call /run/beamOn here.

@@ -5,6 +5,8 @@
 #
 # Usage:
 #   umbrella <env> config|build [options] [<package> ...]
+#   umbrella <env> test [<testname> ...]
+#   umbrella deps [cmake-examine options]
 #
 # <env> selects a Spack environment and thus these locations (relative to the
 # project root, which is the directory holding this script):
@@ -16,6 +18,16 @@
 # Subcommands:
 #   config   run "cmake -S ... -B ..." (the configure step)
 #   build    run "cmake --build ..."   (the build step)
+#   deps     draw the package-level dependency graph of the devel/ packages by
+#            delegating to the "cmake-examine deps" tool.  This does not use
+#            <env>: invoke it as "umbrella deps [cmake-examine options]".  Any
+#            arguments are passed verbatim to cmake-examine, e.g.
+#            "umbrella deps -o devel-deps.png --libs".
+#   test     run project-level tests.  Each test is a directory tests/<name>/
+#            with an executable run.sh, invoked as "run.sh <env> <outdir>"
+#            where <outdir> is builds/envs/<env>/xerosere/<name>/.  With no
+#            <testname> all tests are run.  A test exits 0=pass, 77=skip,
+#            other=fail; "umbrella <env> test" exits non-zero if any failed.
 #
 # With no <package>, the subcommand operates on the whole super-build.
 #
@@ -36,6 +48,7 @@ self="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 root="$self"
 
 die()   { echo "umbrella: $*" >&2; exit 1; }
+run()   { echo "+ $*" >&2; "$@"; }
 usage() {
     # print the leading comment block (skip the shebang, stop at first non-# line)
     awk 'NR==1{next} /^#/{sub(/^# ?/,""); if($0=="" && !seen)next; seen=1; print; next} {exit}' "$0"
@@ -47,13 +60,31 @@ usage() {
 case "$1" in
     -h|--help) usage 0 ;;
 esac
+
+# --- deps: package-level dependency graph (env-independent) -----------------
+# Delegate to "cmake-examine deps".  Collect every package directory under
+# devel/ (skipping the super-build CMakeLists.txt and any non-directory) and
+# pass them, followed by any extra arguments, to cmake-examine.
+if [ "$1" = deps ]; then
+    shift
+    command -v cmake-examine >/dev/null 2>&1 || die "cmake-examine not found on PATH"
+    dirs=()
+    for d in "$root"/devel/*/; do
+        [ -d "$d" ] || continue        # skips CMakeLists.txt and stray files
+        dirs+=("${d%/}")
+    done
+    [ ${#dirs[@]} -gt 0 ] || die "no package directories found under devel/"
+    run cmake-examine deps "${dirs[@]}" "$@"
+    exit 0
+fi
+
 env="$1"; shift
 
-[ $# -ge 1 ] || die "missing subcommand (config|build); see --help"
+[ $# -ge 1 ] || die "missing subcommand (config|build|test); see --help"
 sub="$1"; shift
 case "$sub" in
-    config|build) ;;
-    *) die "unknown subcommand '$sub' (expected config or build)" ;;
+    config|build|test) ;;
+    *) die "unknown subcommand '$sub' (expected config, build or test)" ;;
 esac
 
 # --- environment-derived locations ------------------------------------------
@@ -62,6 +93,49 @@ build="$root/builds/envs/$env"
 install="$root/installs/envs/$env"
 
 [ -d "$root/extern/envs/$env" ] || die "no such environment: extern/envs/$env"
+
+# --- test: run project-level tests (tests/<name>/run.sh) --------------------
+# Each test's run.sh is invoked as "run.sh <env> <outdir>" and reports its
+# result via exit status (0=pass, 77=skip, other=fail).  Output is directed to
+# builds/envs/<env>/xerosere/<name>/.
+if [ "$sub" = test ]; then
+    testroot="$root/tests"
+    [ -d "$testroot" ] || die "no tests/ directory"
+    names=()
+    if [ $# -ge 1 ]; then
+        names=("$@")
+    else
+        for d in "$testroot"/*/; do
+            [ -x "${d}run.sh" ] && names+=("$(basename "${d%/}")")
+        done
+    fi
+    [ ${#names[@]} -gt 0 ] || die "no tests found (expected tests/<name>/run.sh)"
+
+    rc=0; passed=(); skipped=(); failed=()
+    for n in "${names[@]}"; do
+        script="$testroot/$n/run.sh"
+        if [ ! -x "$script" ]; then
+            echo "umbrella: no such test: tests/$n/run.sh" >&2
+            failed+=("$n"); rc=1; continue
+        fi
+        outdir="$build/xerosere/$n"
+        echo "== test: $n =="
+        if run "$script" "$env" "$outdir"; then
+            passed+=("$n")
+        else
+            st=$?
+            if [ "$st" -eq 77 ]; then skipped+=("$n"); else failed+=("$n"); rc=1; fi
+        fi
+    done
+
+    echo "----------------------------------------------------------------"
+    echo "tests: ${#passed[@]} passed, ${#skipped[@]} skipped, ${#failed[@]} failed"
+    [ ${#passed[@]}  -gt 0 ] && echo "  passed:  ${passed[*]}"
+    [ ${#skipped[@]} -gt 0 ] && echo "  skipped: ${skipped[*]}"
+    [ ${#failed[@]}  -gt 0 ] && echo "  failed:  ${failed[*]}"
+    exit "$rc"
+fi
+
 [ -x "$view/bin/g++" ] || die "environment view not built: $view/bin/g++ missing (build the Spack env first)"
 
 # --- split remaining args into cmake options and package names --------------
@@ -87,8 +161,6 @@ config_flags=(
     -DCMAKE_BUILD_TYPE=Release
     -DCMAKE_CXX_STANDARD=23
 )
-
-run() { echo "+ $*" >&2; "$@"; }
 
 # --- whole super-build (no packages listed) ---------------------------------
 if [ ${#pkgs[@]} -eq 0 ]; then

@@ -68,3 +68,6 @@ checkout = git clone 'git@github.com:brettviren/hepmc-phlex.git' 'hepmc-phlex'
 
 [devel/edep-sim-phlex]
 checkout = git clone 'git@github.com:brettviren/edep-sim-phlex.git' 'edep-sim-phlex'
+
+[devel/edep-simphony-plugin]
+checkout = git clone 'git@github.com:brettviren/edep-simphony-plugin' 'edep-simphony-plugin'
