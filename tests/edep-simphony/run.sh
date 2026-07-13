@@ -17,7 +17,7 @@
 #     outdir  output directory  (default: builds/envs/<env>/xerosere/edep-simphony)
 #
 # Optional overrides:
-#   EDEP_SIMPHONY_GDML       geometry GDML   (default: geometry/example.gdml)
+#   EDEP_SIMPHONY_GDML       geometry GDML   (default: geometry/benchmark_small.gdml)
 #   EDEP_SIMPHONY_NEVENTS    number of events (default: 2)
 #
 # Exit codes: 0 = pass, 1 = failure, 77 = skipped (env/build not present).
@@ -58,7 +58,7 @@ edepsim_lib="$(readlink -f "$view/lib/libedepsim.so" 2>/dev/null || true)"
 export EDEPSIM_ROOT="${edepsim_lib%/lib/libedepsim.so}"
 
 # --- inputs -----------------------------------------------------------------
-gdml="${EDEP_SIMPHONY_GDML:-$here/geometry/example.gdml}"
+gdml="${EDEP_SIMPHONY_GDML:-$here/geometry/benchmark_small.gdml}"
 [ -f "$gdml" ] || die "geometry not found: $gdml"
 nevents="${EDEP_SIMPHONY_NEVENTS:-2}"
 
@@ -91,14 +91,29 @@ fi
 [ -f "$out_h5" ] || { tail -20 "$log" >&2; die "no HDF5 output produced: $out_h5"; }
 listing="$(h5ls -r "$out_h5" 2>/dev/null)"
 
+# Sum the rows of a given observables column across all event cells, from the
+# "Dataset {N}" dimensions in the h5ls listing.
+count_rows() {
+    grep -oE "$1 Dataset \{[0-9]+\}" <<<"$listing" \
+        | grep -oE '\{[0-9]+\}' | tr -dc '0-9\n' | awk '{s+=$1} END{print s+0}'
+}
+
 problems=()
-# The observables TableGroup was serialized: its `segments` member group with
-# an Arrow schema blob must be present under an event data cell.
-grep -qE '/segments .*Group'              <<<"$listing" || problems+=("no observables 'segments' group in HDF5")
-grep -qE '/segments/__arrow_schema__'     <<<"$listing" || problems+=("segments group has no __arrow_schema__")
+# The observables TableGroup was serialized: its member groups with an Arrow
+# schema blob must be present under an event data cell.
+grep -qE '/segments .*Group'          <<<"$listing" || problems+=("no observables 'segments' group in HDF5")
+grep -qE '/segments/__arrow_schema__' <<<"$listing" || problems+=("segments group has no __arrow_schema__")
+grep -qE '/photons .*Group'           <<<"$listing" || problems+=("no observables 'photons' group in HDF5")
 # Type marker confirms it is the edep.observables product.
 marker="$(h5dump -N 'arrow.group.type' "$out_h5" 2>/dev/null || true)"
 grep -q '"edep.observables"' <<<"$marker" || problems+=("arrow.group.type marker != edep.observables")
+
+# Both observable tables must carry data: segments (ionisation) and photons
+# (scintillation reaching the photon-detector shell).
+seg_rows="$(count_rows '/segments/energy_deposit')"
+pho_rows="$(count_rows '/photons/energy')"
+[ "$seg_rows" -gt 0 ] || problems+=("segments table is empty (no ionisation recorded)")
+[ "$pho_rows" -gt 0 ] || problems+=("photons table is empty (no photon-detector hits — optical tracking off or geometry has no photon detector)")
 
 if [ "${#problems[@]}" -ne 0 ]; then
     say "FAIL:"; for p in "${problems[@]}"; do say "  - $p"; done
@@ -107,5 +122,5 @@ if [ "${#problems[@]}" -ne 0 ]; then
 fi
 
 say "PASS: edep.observables serialized to $out_h5"
-say "$(grep -cE '/segments .*Group' <<<"$listing") event(s) with a segments table"
+say "segments rows=$seg_rows  photons rows=$pho_rows  (across $(grep -cE '/segments .*Group' <<<"$listing") event(s))"
 exit 0

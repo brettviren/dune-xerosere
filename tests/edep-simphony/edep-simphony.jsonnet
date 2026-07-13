@@ -33,16 +33,18 @@ local params = import 'params.libsonnet';
   },
 
   sources: {
-    // One 1 GeV muon along +z per event (a reliable ionisation source that
-    // fills the observables `segments` table).  Tune for the geometry.
+    // One 1 MeV electron from the centre of the LAr cube (along +x).  It stops
+    // in a few mm, depositing its energy as ionisation (-> `segments`) and
+    // ~16k scintillation photons that reach the surrounding photon-detector
+    // shell (-> `photons`).
     gun: {
       cpp: 'hmp_gen_event_gun',
       output_layer: 'event',
-      pdg: 13,             // mu-
-      mass: 105.658,       // MeV
-      energy: 1000.0,      // MeV kinetic
-      direction: [0, 0, 1],
-      position: [0, 0, -2500],  // mm, upstream of the detector
+      pdg: 11,             // e-
+      mass: 0.511,         // MeV
+      energy: 1.0,         // MeV kinetic
+      direction: [1, 0, 0],
+      position: [0, 0, 0],  // mm, centre of the active LAr
       number: 1,
       momentum_unit: 'MeV',
       length_unit: 'mm',
@@ -54,7 +56,11 @@ local params = import 'params.libsonnet';
       cpp: 'esp_tracking',
       input_layer: 'event',
       gdml: params.gdml,
-      // physics_list / macro omitted -> edep-sim default (QGSP_BERT + optical).
+      // edep-sim's preamble leaves optical photons unstacked (killed) on the
+      // CPU; turn scintillation stacking on so photons are tracked to the
+      // photon-detector shell and land in TG4Event.PhotonDetectors.  (This is
+      // the CPU optical path; the GPU plugin path is ddm-p5j.7.)
+      macro: '/process/optical/scintillation/setStackPhotons true\n',
     },
     edep_observables: {
       cpp: 'esp_observables',

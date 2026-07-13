@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+.venv/
+venv/
+env/
+
+# Generated geometry
+benchmark.gdml
+
+# ROOT
+*.root
+*.C~
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+\#*\#
+.#*
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Logs / tmp
+*.log
+*.tmp

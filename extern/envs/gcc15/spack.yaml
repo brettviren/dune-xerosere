@@ -51,6 +51,8 @@ spack:
     - wire-cell-toolkit@0.36.1 +hdf +root cxxstd=23 %gcc@15
     - hepmc3 +rootio
     - edepsim@4.3.0 cxxstd=23 %gcc@15
+    # This version is tied to the host's nvidia driver version!
+    - optix-dev@8.1.0
     - simphony@0.7.0 cxxstd=23 %gcc@15
     - edep-simphony-plugin@master %gcc@15
     - cmake@3.31

@@ -1,0 +1,22 @@
+# cpu.mac — edep-sim CLI, Geant4/CPU optical tracking (no Simphony plugin).
+#
+# Same primary + geometry as the phlex tests/edep-simphony workflow, but here
+# Geant4 tracks the scintillation photons on the CPU: setStackPhotons true so
+# they propagate to the photon-detector shell and land in
+# TG4Event.PhotonDetectors (EDepSimEvents tree).
+
+/run/verbose 0
+/edep/update
+/run/initialize
+
+# edep-sim's preamble leaves optical photons unstacked; turn scintillation
+# stacking on (must be AFTER /run/initialize).
+/process/optical/scintillation/setStackPhotons true
+
+# One 1 MeV electron from the centre of the LAr cube, along +x.
+/gps/particle e-
+/gps/energy 1 MeV
+/gps/position 0 0 0 mm
+/gps/direction 1 0 0
+
+# Events are launched by edep-sim's -e flag.

@@ -1,0 +1,9 @@
+/run/verbose 1
+/edep/update
+/run/initialize
+/process/optical/scintillation/setStackPhotons true
+/process/optical/cerenkov/setStackPhotons true
+/gps/particle e-
+/gps/energy 1 MeV
+/gps/position 0 0 0 mm
+/gps/direction 1 0 0

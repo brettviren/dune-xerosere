@@ -1,0 +1,32 @@
+# gpu.mac — edep-sim CLI, Simphony/GPU optical tracking (via the plugin).
+#
+# Same primary + geometry as cpu.mac, but optical photons are NOT tracked on the
+# CPU: the plugin's instrumented Cerenkov/Scintillation processes emit gensteps
+# that Simphony propagates on the GPU (OptiX).  Hits land in the GPUPhotonHits
+# TTree created by the plugin's UserEventAction.
+#
+# Requires the plugin's runtime environment (set by its setup_run_environment
+# when the Spack env is activated): PLUGIN_LIB, EXTRAPHYSICS,
+# OPTICKS_INTEGRATION_MODE, CSGOptiX__ptxpath, etc.  Further behaviour (DUAL,
+# DEBUGHEAVY, ...) is governed by EDEP_SIMPHONY_* environment variables.
+
+/run/verbose 0
+/edep/update
+/run/initialize
+
+# Load the plugin user-action factories (after /run/initialize).
+/edep/actions/loadUserRunAction   $(PLUGIN_LIB) CreateUserRunAction   unspecified
+/edep/actions/loadUserEventAction $(PLUGIN_LIB) CreateUserEventAction unspecified
+/edep/actions/loadUserStepAction  $(PLUGIN_LIB) CreateUserStepAction  unspecified
+
+# Keep optical photons killed on the CPU — the GPU handles all transport.
+/process/optical/scintillation/setStackPhotons false
+/process/optical/cerenkov/setStackPhotons false
+
+# One 1 MeV electron from the centre of the LAr cube, along +x.
+/gps/particle e-
+/gps/energy 1 MeV
+/gps/position 0 0 0 mm
+/gps/direction 1 0 0
+
+# Events are launched by edep-sim's -e flag.

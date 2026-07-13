@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="ASCII"?>
+<gdml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://service-spi.web.cern.ch/service-spi/app/releases/GDML/schema/gdml.xsd">
+  <define>
+    <position unit="cm" name="physActiveLAr_pos" x="0.0" y="0.0" z="0.0"/>
+    <position unit="cm" name="physPTP_pos" x="0.0" y="0.0" z="0.0"/>
+    <position unit="cm" name="physTPB_pos" x="0.0" y="0.0" z="0.0"/>
+    <position unit="cm" name="physShell_pos" x="0.0" y="0.0" z="0.0"/>
+    <matrix name="pTP_RINDEX_VALUE" coldim="2" values="2.339324413207547e-06 1.65 2.917275150588235e-06 1.65 3.0996048475e-06 1.65 3.646593938235294e-06 1.65 4.065055537704918e-06 1.65 7.74901211875e-06 1.65 9.6862651484375e-06 1.65 1.1696622066037735e-05 1.65"/>
+    <matrix name="pTP_WLSABSLENGTH_VALUE" coldim="2" values="2.339324413207547e-06 10000.0 2.917275150588235e-06 10000.0 3.0996048475e-06 10000.0 3.646593938235294e-06 10000.0 4.065055537704918e-06 0.187 7.74901211875e-06 0.0005 9.6862651484375e-06 0.0005 1.1696622066037735e-05 0.0005"/>
+    <matrix name="pTP_WLSCOMPONENT_VALUE" coldim="2" values="2.339324413207547e-06 0.0 2.917275150588235e-06 0.0005 3.0996048475e-06 0.002 3.646593938235294e-06 0.022 4.065055537704918e-06 0.0005 7.74901211875e-06 0.0 9.6862651484375e-06 0.0 1.1696622066037735e-05 0.0"/>
+    <matrix name="pTP_WLSTIMECONSTANT_VALUE" coldim="1" values="1.136"/>
+    <matrix name="acrylicMcMaster_RINDEX_VALUE" coldim="2" values="2.339324413207547e-06 1.5 2.917275150588235e-06 1.5 3.0996048475e-06 1.5 3.646593938235294e-06 1.5 4.065055537704918e-06 1.5 7.74901211875e-06 1.5 9.6862651484375e-06 1.5 1.1696622066037735e-05 1.5"/>
+    <matrix name="bluewlsacrylic_RINDEX_VALUE" coldim="2" values="2.339324413207547e-06 1.58 2.917275150588235e-06 1.58 3.0996048475e-06 1.58 3.646593938235294e-06 1.58 4.065055537704918e-06 1.58 7.74901211875e-06 1.58 9.6862651484375e-06 1.58 1.1696622066037735e-05 1.58"/>
+    <matrix name="bluewlsacrylic_WLSABSLENGTH_VALUE" coldim="2" values="2.339324413207547e-06 200.0 2.917275150588235e-06 200.0 3.0996048475e-06 0.8 3.646593938235294e-06 0.8 4.065055537704918e-06 3.0 7.74901211875e-06 0.0001 9.6862651484375e-06 0.0001 1.1696622066037735e-05 0.0001"/>
+    <matrix name="bluewlsacrylic_WLSCOMPONENT_VALUE" coldim="2" values="2.339324413207547e-06 0.0005 2.917275150588235e-06 0.02 3.0996048475e-06 0.0 3.646593938235294e-06 0.0 4.065055537704918e-06 0.0 7.74901211875e-06 0.0 9.6862651484375e-06 0.0 1.1696622066037735e-05 0.0"/>
+    <matrix name="bluewlsacrylic_WLSTIMECONSTANT_VALUE" coldim="1" values="1.26"/>
+    <matrix name="G4_lAr_RINDEX_VALUE" coldim="2" values="2.339324413207547e-06 1.23 2.917275150588235e-06 1.23 3.0996048475e-06 1.23 3.646593938235294e-06 1.23 4.065055537704918e-06 1.235 7.74901211875e-06 1.315 9.6862651484375e-06 1.45 1.1696622066037735e-05 5.45"/>
+    <matrix name="G4_lAr_RAYLEIGH_VALUE" coldim="2" values="2.339324413207547e-06 900.0 2.917275150588235e-06 900.0 3.0996048475e-06 900.0 3.646593938235294e-06 900.0 4.065055537704918e-06 900.0 7.74901211875e-06 900.0 9.6862651484375e-06 900.0 1.1696622066037735e-05 900.0"/>
+    <matrix name="G4_lAr_ABSLENGTH_VALUE" coldim="2" values="2.339324413207547e-06 10000.0 2.917275150588235e-06 10000.0 3.0996048475e-06 10000.0 3.646593938235294e-06 10000.0 4.065055537704918e-06 10000.0 7.74901211875e-06 10000.0 9.6862651484375e-06 10000.0 1.1696622066037735e-05 10000.0"/>
+    <matrix name="G4_lAr_SCINTILLATIONCOMPONENT1_VALUE" coldim="2" values="2.339324413207547e-06 0.0 2.917275150588235e-06 0.0 3.0996048475e-06 0.0 3.646593938235294e-06 0.0 4.065055537704918e-06 0.0 7.74901211875e-06 0.000238409 9.6862651484375e-06 0.0398859 1.1696622066037735e-05 0.00422473"/>
+    <matrix name="G4_lAr_SCINTILLATIONCOMPONENT2_VALUE" coldim="2" values="2.339324413207547e-06 0.0 2.917275150588235e-06 0.0 3.0996048475e-06 0.0 3.646593938235294e-06 0.0 4.065055537704918e-06 0.0 7.74901211875e-06 0.000238409 9.6862651484375e-06 0.0398859 1.1696622066037735e-05 0.00422473"/>
+    <matrix name="G4_lAr_FASTCOMPONENT_VALUE" coldim="2" values="2.339324413207547e-06 0.0 2.917275150588235e-06 0.0 3.0996048475e-06 0.0 3.646593938235294e-06 0.0 4.065055537704918e-06 0.0 7.74901211875e-06 0.000238409 9.6862651484375e-06 0.0398859 1.1696622066037735e-05 0.00422473"/>
+    <matrix name="G4_lAr_SLOWCOMPONENT_VALUE" coldim="2" values="2.339324413207547e-06 0.0 2.917275150588235e-06 0.0 3.0996048475e-06 0.0 3.646593938235294e-06 0.0 4.065055537704918e-06 0.0 7.74901211875e-06 0.000238409 9.6862651484375e-06 0.0398859 1.1696622066037735e-05 0.00422473"/>
+    <matrix name="G4_lAr_REEMISSIONPROB_VALUE" coldim="2" values="2.339324413207547e-06 0.0 2.917275150588235e-06 0.0 3.0996048475e-06 0.0 3.646593938235294e-06 0.0 4.065055537704918e-06 0.0 7.74901211875e-06 0.0 9.6862651484375e-06 0.0 1.1696622066037735e-05 0.0"/>
+    <matrix name="G4_lAr_SCINTILLATIONYIELD_VALUE" coldim="1" values="51282.05128205128"/>
+    <matrix name="G4_lAr_RESOLUTIONSCALE_VALUE" coldim="1" values="1.0"/>
+    <matrix name="G4_lAr_SCINTILLATIONTIMECONSTANT1_VALUE" coldim="1" values="7.0"/>
+    <matrix name="G4_lAr_SCINTILLATIONTIMECONSTANT2_VALUE" coldim="1" values="1400.0"/>
+    <matrix name="G4_lAr_SCINTILLATIONYIELD1_VALUE" coldim="1" values="0.75"/>
+    <matrix name="G4_lAr_SCINTILLATIONYIELD2_VALUE" coldim="1" values="0.25"/>
+    <matrix name="G4_lAr_GammaCONSTANT_VALUE" coldim="2" values="7.0 0.75 1400.0 0.25"/>
+    <matrix name="G4_lAr_OpticalCONSTANT_VALUE" coldim="2" values="7.0 0.75 1400.0 0.25"/>
+    <matrix name="G4_lAr_AlphaCONSTANT_VALUE" coldim="2" values="7.0 0.75 1400.0 0.25"/>
+    <matrix name="G4_lAr_NeutronCONSTANT_VALUE" coldim="2" values="7.0 0.75 1400.0 0.25"/>
+    <matrix name="Silicon_RINDEX_VALUE" coldim="2" values="2.339324413207547e-06 3.5 2.917275150588235e-06 3.5 3.0996048475e-06 3.5 3.646593938235294e-06 3.5 4.065055537704918e-06 3.5 7.74901211875e-06 3.5 9.6862651484375e-06 3.5 1.1696622066037735e-05 3.5"/>
+    <matrix name="Vikuiti_REFLECTIVITY_VALUE" coldim="2" values="2.339324413207547e-06 0.98 2.917275150588235e-06 0.98 3.0996048475e-06 0.98 3.646593938235294e-06 0.98 4.065055537704918e-06 0.98 7.74901211875e-06 0.98 9.6862651484375e-06 0.98 1.1696622066037735e-05 0.98"/>
+    <matrix name="SiPMSurface_REFLECTIVITY_VALUE" coldim="2" values="2.339324413207547e-06 0.0 2.917275150588235e-06 0.0 3.0996048475e-06 0.0 3.646593938235294e-06 0.0 4.065055537704918e-06 0.0 7.74901211875e-06 0.0 9.6862651484375e-06 0.0 1.1696622066037735e-05 0.0"/>
+    <matrix name="SiPMSurface_EFFICIENCY_VALUE" coldim="2" values="2.339324413207547e-06 1.0 2.917275150588235e-06 1.0 3.0996048475e-06 1.0 3.646593938235294e-06 1.0 4.065055537704918e-06 1.0 7.74901211875e-06 1.0 9.6862651484375e-06 1.0 1.1696622066037735e-05 1.0"/>
+    <position name="center"/>
+    <rotation name="identity"/>
+  </define>
+  <materials>
+    <element name="C" Z="6" formula="C">
+      <atom value="12.011"/>
+    </element>
+    <element name="H" Z="1" formula="H">
+      <atom value="1.008"/>
+    </element>
+    <element name="O" Z="8" formula="O">
+      <atom value="15.999"/>
+    </element>
+    <element name="Ar" Z="18" formula="Ar">
+      <atom value="39.948"/>
+    </element>
+    <material name="pTP" formula="">
+      <property name="RINDEX" ref="pTP_RINDEX_VALUE"/>
+      <property name="WLSABSLENGTH" ref="pTP_WLSABSLENGTH_VALUE"/>
+      <property name="WLSCOMPONENT" ref="pTP_WLSCOMPONENT_VALUE"/>
+      <property name="WLSTIMECONSTANT" ref="pTP_WLSTIMECONSTANT_VALUE"/>
+      <D value="1.23"/>
+      <composite ref="C" n="18"/>
+      <composite ref="H" n="14"/>
+    </material>
+    <material name="acrylicMcMaster" formula="">
+      <property name="RINDEX" ref="acrylicMcMaster_RINDEX_VALUE"/>
+      <D value="1.19"/>
+      <composite ref="C" n="5"/>
+      <composite ref="H" n="8"/>
+      <composite ref="O" n="2"/>
+    </material>
+    <material name="bluewlsacrylic" formula="">
+      <property name="RINDEX" ref="bluewlsacrylic_RINDEX_VALUE"/>
+      <property name="WLSABSLENGTH" ref="bluewlsacrylic_WLSABSLENGTH_VALUE"/>
+      <property name="WLSCOMPONENT" ref="bluewlsacrylic_WLSCOMPONENT_VALUE"/>
+      <property name="WLSTIMECONSTANT" ref="bluewlsacrylic_WLSTIMECONSTANT_VALUE"/>
+      <D value="1.023"/>
+      <composite ref="C" n="9"/>
+      <composite ref="H" n="10"/>
+    </material>
+    <material name="G4_lAr" formula="" state="liquid">
+      <property name="RINDEX" ref="G4_lAr_RINDEX_VALUE"/>
+      <property name="RAYLEIGH" ref="G4_lAr_RAYLEIGH_VALUE"/>
+      <property name="ABSLENGTH" ref="G4_lAr_ABSLENGTH_VALUE"/>
+      <property name="SCINTILLATIONCOMPONENT1" ref="G4_lAr_SCINTILLATIONCOMPONENT1_VALUE"/>
+      <property name="SCINTILLATIONCOMPONENT2" ref="G4_lAr_SCINTILLATIONCOMPONENT2_VALUE"/>
+      <property name="FASTCOMPONENT" ref="G4_lAr_FASTCOMPONENT_VALUE"/>
+      <property name="SLOWCOMPONENT" ref="G4_lAr_SLOWCOMPONENT_VALUE"/>
+      <property name="REEMISSIONPROB" ref="G4_lAr_REEMISSIONPROB_VALUE"/>
+      <property name="SCINTILLATIONYIELD" ref="G4_lAr_SCINTILLATIONYIELD_VALUE"/>
+      <property name="RESOLUTIONSCALE" ref="G4_lAr_RESOLUTIONSCALE_VALUE"/>
+      <property name="SCINTILLATIONTIMECONSTANT1" ref="G4_lAr_SCINTILLATIONTIMECONSTANT1_VALUE"/>
+      <property name="SCINTILLATIONTIMECONSTANT2" ref="G4_lAr_SCINTILLATIONTIMECONSTANT2_VALUE"/>
+      <property name="SCINTILLATIONYIELD1" ref="G4_lAr_SCINTILLATIONYIELD1_VALUE"/>
+      <property name="SCINTILLATIONYIELD2" ref="G4_lAr_SCINTILLATIONYIELD2_VALUE"/>
+      <property name="GammaCONSTANT" ref="G4_lAr_GammaCONSTANT_VALUE"/>
+      <property name="OpticalCONSTANT" ref="G4_lAr_OpticalCONSTANT_VALUE"/>
+      <property name="AlphaCONSTANT" ref="G4_lAr_AlphaCONSTANT_VALUE"/>
+      <property name="NeutronCONSTANT" ref="G4_lAr_NeutronCONSTANT_VALUE"/>
+      <D value="1.396"/>
+      <fraction ref="Ar" n="1.0"/>
+    </material>
+    <element name="Si" Z="14" formula="Si">
+      <atom value="28.085"/>
+    </element>
+    <material name="Silicon" formula="">
+      <property name="RINDEX" ref="Silicon_RINDEX_VALUE"/>
+      <D value="2.33"/>
+      <composite ref="Si" n="1"/>
+    </material>
+  </materials>
+  <solids>
+    <box name="solidActiveLAr" lunit="cm" x="20.0" y="20.0" z="20.0"/>
+    <box name="solidPTP" lunit="cm" x="20.040000000000003" y="20.040000000000003" z="20.040000000000003"/>
+    <box name="solidTPB" lunit="cm" x="21.240000000000002" y="21.240000000000002" z="21.240000000000002"/>
+    <box name="solidShell" lunit="cm" x="21.44" y="21.44" z="21.44"/>
+    <box name="solidWorld" lunit="cm" x="41.44" y="41.44" z="41.44"/>
+    <opticalsurface name="Vikuiti" model="unified" finish="ground" type="dielectric_metal" value="0.0">
+      <property name="REFLECTIVITY" ref="Vikuiti_REFLECTIVITY_VALUE"/>
+    </opticalsurface>
+    <opticalsurface name="SiPMSurface" model="unified" finish="polished" type="dielectric_metal" value="0.0">
+      <property name="REFLECTIVITY" ref="SiPMSurface_REFLECTIVITY_VALUE"/>
+      <property name="EFFICIENCY" ref="SiPMSurface_EFFICIENCY_VALUE"/>
+    </opticalsurface>
+  </solids>
+  <structure>
+    <volume name="logicActiveLAr">
+      <materialref ref="G4_lAr"/>
+      <solidref ref="solidActiveLAr"/>
+      <auxiliary auxtype="EField" auxvalue="(500 V/cm, 0 V/cm, 0 V/cm)"/>
+      <auxiliary auxtype="SegmentDetector" auxvalue="lar"/>
+    </volume>
+    <volume name="logicPTP">
+      <materialref ref="pTP"/>
+      <solidref ref="solidPTP"/>
+      <physvol name="physActiveLAr">
+        <volumeref ref="logicActiveLAr"/>
+        <positionref ref="physActiveLAr_pos"/>
+        <rotationref ref="identity"/>
+      </physvol>
+    </volume>
+    <volume name="logicTPB">
+      <materialref ref="bluewlsacrylic"/>
+      <solidref ref="solidTPB"/>
+      <physvol name="physPTP">
+        <volumeref ref="logicPTP"/>
+        <positionref ref="physPTP_pos"/>
+        <rotationref ref="identity"/>
+      </physvol>
+    </volume>
+    <volume name="logicShell">
+      <materialref ref="Silicon"/>
+      <solidref ref="solidShell"/>
+      <physvol name="physTPB">
+        <volumeref ref="logicTPB"/>
+        <positionref ref="physTPB_pos"/>
+        <rotationref ref="identity"/>
+      </physvol>
+      <auxiliary auxtype="SurfaceDetector" auxvalue="PhotonDetector"/>
+    </volume>
+    <volume name="logicWorld">
+      <materialref ref="G4_lAr"/>
+      <solidref ref="solidWorld"/>
+      <physvol name="physShell">
+        <volumeref ref="logicShell"/>
+        <positionref ref="physShell_pos"/>
+        <rotationref ref="identity"/>
+      </physvol>
+    </volume>
+    <skinsurface name="skinShell" surfaceproperty="SiPMSurface">
+      <volumeref ref="logicShell"/>
+    </skinsurface>
+  </structure>
+  <setup name="Default" version="0">
+    <world ref="logicWorld"/>
+  </setup>
+</gdml>

@@ -71,3 +71,9 @@ checkout = git clone 'git@github.com:brettviren/edep-sim-phlex.git' 'edep-sim-ph
 
 [devel/edep-simphony-plugin]
 checkout = git clone 'git@github.com:brettviren/edep-simphony-plugin' 'edep-simphony-plugin'
+
+[devel/edep-sim]
+checkout = git clone 'git@github.com:clarkmcgrew/edep-sim.git' 'edep-sim'
+
+[devel/phlex]
+checkout = git clone 'https://github.com/Framework-R-D/phlex.git' 'phlex'
