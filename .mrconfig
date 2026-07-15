@@ -9,6 +9,9 @@ skip = [ "$MR_ACTION" = "push" ] || [ "$MR_ACTION" = "commit" ]
 [devel/arrow-hdf]
 checkout = git clone 'git@github.com:brettviren/arrow-hdf.git' 'arrow-hdf'
 
+[devel/boost-config]
+checkout = git clone 'git@github.com:brettviren/boost-config.git' 'boost-config'
+
 [devel/phlex-arrow-common]
 checkout = git clone 'git@github.com:brettviren/phlex-arrow-common.git' 'phlex-arrow-common'
 
