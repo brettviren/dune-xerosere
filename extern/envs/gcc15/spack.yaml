@@ -46,7 +46,7 @@ spack:
     # For now, while we only do local dev builds, we add root +arrow explicitly as a way to get arrow included.
     - root +arrow %gcc@15
     # Some versions are set manually to force local upgrade over past concretizations
-    - phlex@0.3.0 +form %gcc@15
+    - phlex@0.3.2 +form %gcc@15
     - wire-cell-data@0.2.0
     - wire-cell-toolkit@0.36.1 +hdf +root cxxstd=23 %gcc@15
     - hepmc3 +rootio

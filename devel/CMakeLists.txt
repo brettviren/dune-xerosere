@@ -35,7 +35,7 @@ project(xerosere VERSION 0.1.0 LANGUAGES NONE)
 include(ExternalProject)
 
 # Packages NOT to build here (not CMake / provided externally).
-set(XEROSERE_EXCLUDE wire-cell-toolkit)
+set(XEROSERE_EXCLUDE wire-cell-toolkit phlex)
 
 # Shared install prefix for all sub-packages.  Defaults to <build>/install so
 # nothing pollutes the source tree unless the user overrides CMAKE_INSTALL_PREFIX.

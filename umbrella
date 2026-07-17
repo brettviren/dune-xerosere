@@ -44,6 +44,19 @@
 #
 set -euo pipefail
 
+# Sanitize the ambient compiler search-path environment.  A Spack-activated
+# shell exports CPATH / CPLUS_INCLUDE_PATH / C_INCLUDE_PATH pointing at the
+# environment view's include dir.  If cmake's configure step sees those, it
+# records "$view/include" as an *implicit* compiler include directory and then
+# STRIPS it from imported targets' SYSTEM include dirs (e.g. Arrow, HDF5) as
+# redundant -- so the generated compile lines carry no "-isystem $view/include".
+# At build time (a plain shell, where those vars are unset) the compiler no
+# longer searches the view and the build fails with e.g. "arrow/api.h: No such
+# file or directory".  Unsetting them here makes configure deterministic and
+# self-contained: find_package() supplies every needed path via
+# CMAKE_PREFIX_PATH, so nothing of value is lost.
+unset CPATH CPLUS_INCLUDE_PATH C_INCLUDE_PATH OBJC_INCLUDE_PATH 2>/dev/null || true
+
 self="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 root="$self"
 
@@ -138,6 +151,12 @@ fi
 
 [ -x "$view/bin/g++" ] || die "environment view not built: $view/bin/g++ missing (build the Spack env first)"
 
+# Prefer the environment view's cmake over the system one (which may be too old
+# for some packages, e.g. EDepSim needs >= 3.30).  Fall back to PATH cmake only
+# if the view provides none.
+cmake="$view/bin/cmake"
+[ -x "$cmake" ] || cmake="$(command -v cmake 2>/dev/null)" || die "no cmake in $view/bin or on PATH"
+
 # --- split remaining args into cmake options and package names --------------
 opts=()
 pkgs=()
@@ -166,13 +185,13 @@ config_flags=(
 if [ ${#pkgs[@]} -eq 0 ]; then
     case "$sub" in
         config)
-            run cmake -S "$root/devel" -B "$build" \
+            run "$cmake" -S "$root/devel" -B "$build" \
                 "${config_flags[@]}" \
                 -DCMAKE_PREFIX_PATH="$view" \
                 "${opts[@]}"
             ;;
         build)
-            run cmake --build "$build" "${opts[@]}"
+            run "$cmake" --build "$build" "${opts[@]}"
             ;;
     esac
     exit 0
@@ -188,7 +207,7 @@ for pkg in "${pkgs[@]}"; do
     pbuild="$build/$pkg"
     case "$sub" in
         config)
-            run cmake -S "$src" -B "$pbuild" \
+            run "$cmake" -S "$src" -B "$pbuild" \
                 "${config_flags[@]}" \
                 -DCMAKE_PREFIX_PATH="$install;$view" \
                 -DCMAKE_POLICY_DEFAULT_CMP0167=NEW \
@@ -198,7 +217,7 @@ for pkg in "${pkgs[@]}"; do
             ;;
         build)
             [ -d "$pbuild" ] || die "package '$pkg' not configured: run 'umbrella $env config $pkg' first"
-            run cmake --build "$pbuild" "${opts[@]}"
+            run "$cmake" --build "$pbuild" "${opts[@]}"
             ;;
     esac
 done
