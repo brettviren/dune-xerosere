@@ -145,21 +145,17 @@ Xerosere provides Spack Environment configurations in =extern/envs/*/spack.yaml=
 You can see the concrete spec and build it with:
 
 #+begin_example
-$ spack -e extern/envs/gcc15 concretize -f
-$ spack -e extern/envs/gcc15 install -j 32
+$ ./umbrella concretize
+$ ./umbrella install
 #+end_example
 
-This duo is also what is run when changes are made to the environment's
-=spack.yaml= or to a Spack package repo.
+The =umbrella= script provides thin wrappers over =spack= with some sane defaults.
 
-When installing iwth Spack 1.2, enjoy the new TUI with these keys: =n= / =p= to
-cycle which one shows log output or =v= to cycle between log output and
-per-package spinner.
+This script is the main entry point for all xerosere developer workflows.  For more info:
 
-The full build will take a while, depending on hardware.  Be sure to do it on
-fast storage.  You can give it more cores if you have them.  On BNL's =wcgpu= it
-takes about 30 minutes.  Intermittent failures due to upstream source servers
-not answering can be expected.
+#+begin_example
+$ ./umbrella --help
+#+end_example
 
 * Developer tasks
 
@@ -179,46 +175,33 @@ avoid that for now:
 $ spack repo add --scope user extern/repos/edep-simphony-spack/edep_simphony/spack_repo/edep_simphony
 #+end_example
 
-When an older version is built, spack concretization may prefer it to a new one.  In which case the env's =spack.yaml= can be modified to set the desired version.  Then:
+Evaluate the results by repeating the pair:
 
 #+begin_example
-$ spack -e extern/envs/gcc15 concretize -f
-$ spack -e extern/envs/gcc15 install -j 32
+$ ./umbrella concretize
+$ ./umbrella install
 #+end_example
 
 ** Local umbrella build
 
-This builds with CMake, using the "gcc15" environment view to provide
-dependencies, the umbrella's packages.
+This builds local source under =devel/= via a "CMake super build" pattern.  So, it only supports CMake-built pacakges.
 
 #+begin_example
-$ cmake -S devel -B builds/envs/gcc15 \
-    -DCMAKE_C_COMPILER=$PWD/extern/envs/gcc15/view/bin/gcc \
-    -DCMAKE_CXX_COMPILER=$PWD/extern/envs/gcc15/view/bin/g++ \
-    -DCMAKE_PREFIX_PATH=$PWD/extern/envs/gcc15/view \
-    -DCMAKE_INSTALL_PREFIX=$PWD/installs/envs/gcc15 \
-    -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=23
-$ cmake --build builds/envs/gcc15 -j 32
+$ ./umbrella config
+$ ./umbrella build
 #+end_example
 
-Builds go to =builds/envs/gcc15/= and installs go to =installs/envs/gcc15/=
+The default env is named "gcc15" and builds go to =builds/envs/gcc15/= and installs go to =installs/envs/gcc15/=
+
+By default, environment is not munged to use the build so use paths like:
 
 #+begin_example
 $ ./installs/envs/gcc15/bin/phlexed  --help
 #+end_example
 
-** Spack umbrella build
+** Spack develop
 
-Spack can build xerosere packages either in via =spack install= of an environment or =spack develop=.
-
-The =xerosere= Spack environment is a super-set of the =gcc15= one and builds the same way:
-
-#+begin_example
-$ spack -e extern/envs/xerosere concretize -f
-$ spack -e extern/envs/xerosere install -j 32
-#+end_example
-
-For =spack develop= we must do a one-time registration:
+The =spack develop= scheme is not (yet) in =umbrella=.  Note, it is *stateful* based on issuing the =develop= and =undevelop= commands.  It needs a one-time =develop= registration over all packages to develop.  You may want to use a different env than nominal =gcc15= one.
 
 #+begin_example
 # fish syntax
@@ -229,7 +212,7 @@ $ for p in arrow-hdf dune-daq-types dune-daq-codec dune-daq-hdf dune-daq-arrow-f
   end 
 #+end_example
 
-Then concretize
+Then concretize:
 
 #+begin_example
 $ spack -e extern/envs/xerosere concretize -f
@@ -244,9 +227,4 @@ $ spack -e extern/envs/xerosere undevelop --all
 $ spack -e extern/envs/xerosere concretize -f
 $ spack -e extern/envs/xerosere install -j 32
 #+end_example
-
-
-The umbrella packages are Spack-packaged in https://github.com/brettviren/dune-tdm-spack.
-The require all the other =extern/repos/*=.  See the =.mrconfig= file for a list.  The =dune-xerosere= package pulls in the rest.
-
 
