@@ -1,0 +1,53 @@
+#+title Xerosere Glossary Spanning Wire-Cell Toolkit and Phlex Terms
+
+The Wire-Cell Toolkit (WCT) and Phlex framework are very similar and so naturally have similar terms.  But they are not the same and some terms get overloaded between the two.  This glossary tries to collect where different terms stand for the same concept or the same term stands for concepts as well as collecting terms unique to each domain.
+
+Some general concepts the two have in common:
+
+- Both implement *data-flow processing* (DFP) paradigm and both with TBB =flow_graph=.
+
+See also:
+
+- [[https://framework-r-d.github.io/phlex-design/appendices/glossary.html][Phlex's glossary]]
+
+* Libraries: Phlex "module" and WCT "plugin"
+
+Common concepts:
+
+- A shared library that is dynamically loaded.
+
+- CPP macros generate special C-linkage functions following and enforce a naming
+  convention.
+
+Differences:
+
+| Phlex framework                         | Wire-Cell toolkit                   |
+|-----------------------------------------+-------------------------------------|
+| Family of CPP macros =PHLEX_REGISTER_*()= | A single macro =WIRECELL_FACTORY()=   |
+| Provides a function code body           | Call with name and type information |
+| Exactly 1 registration per module       | Any number of factories per plugin  |
+| Can register many "algorithms"          | Factory is for a single "node"      |
+
+
+* Node: Phlex "algorithm" and WCT "component"
+
+Common concepts:
+
+- Named, concrete implementation of callable code.
+
+Differences:
+
+| Phlex framework                             | Wire-Cell toolkit                       |
+|---------------------------------------------+-----------------------------------------|
+| Classified by purpose (transform, provider) | Classified by shape (source, fan)       |
+| Code can be a function or a class           | Only classes                            |
+| Instantiates only to a DFP graph node | DFP node or "service"       |
+| Statically typed                            | Dynamic typed via interface inheritance |
+
+* Data:
+
+Common concepts
+
+- DFP nodes produce and/or consume data objects when called
+- ....  
+

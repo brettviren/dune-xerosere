@@ -12,3 +12,6 @@ deps.*
 installs
 
 data
+build
+log*
+reference

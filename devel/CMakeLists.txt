@@ -35,7 +35,11 @@ project(xerosere VERSION 0.1.0 LANGUAGES NONE)
 include(ExternalProject)
 
 # Packages NOT to build here (not CMake / provided externally).
-set(XEROSERE_EXCLUDE wire-cell-toolkit phlex)
+# wire-cell-toolkit now has a CMake build at feature parity with wcb, so the
+# umbrella builds it here (it has no in-tree sibling deps, so it builds first;
+# siblings still resolve find_package(WireCell) -- note: WCT's own package name
+# is WireCellToolkit -- from whichever WCT is on CMAKE_PREFIX_PATH).
+set(XEROSERE_EXCLUDE phlex)
 
 # Shared install prefix for all sub-packages.  Defaults to <build>/install so
 # nothing pollutes the source tree unless the user overrides CMAKE_INSTALL_PREFIX.

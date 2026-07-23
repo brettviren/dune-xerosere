@@ -45,6 +45,20 @@ checkout = git clone 'git@github.com:brettviren/phlex-arrow-hdf.git' 'phlex-arro
 [devel/phlexed]
 checkout = git clone 'git@github.com:brettviren/phlexed.git' 'phlexed'
 
+[devel/hepmc-phlex]
+checkout = git clone 'git@github.com:brettviren/hepmc-phlex.git' 'hepmc-phlex'
+
+[devel/edep-sim-phlex]
+checkout = git clone 'git@github.com:brettviren/edep-sim-phlex.git' 'edep-sim-phlex'
+
+[devel/edep-simphony-plugin]
+checkout = git clone 'git@github.com:brettviren/edep-simphony-plugin' 'edep-simphony-plugin'
+
+[devel/edep-sim]
+checkout = git clone 'git@github.com:clarkmcgrew/edep-sim.git' 'edep-sim'
+
+[devel/wire-cell-toolkit]
+checkout = git clone 'git@github.com:wirecell/wire-cell-toolkit.git' 'wire-cell-toolkit'
 
 # Spack package recipe repos (referenced by extern/envs/*/spack.yaml repos:).
 # wire-cell-spack must have highest repo precedence (listed first in spack.yaml)
@@ -66,17 +80,7 @@ checkout = git clone 'git@github.com:WireCell/edep-simphony-spack.git' 'edep-sim
 [extern/repos/dune-tdm-spack]
 checkout = git clone 'git@github.com:brettviren/dune-tdm-spack.git' 'dune-tdm-spack'
 
-[devel/hepmc-phlex]
-checkout = git clone 'git@github.com:brettviren/hepmc-phlex.git' 'hepmc-phlex'
 
-[devel/edep-sim-phlex]
-checkout = git clone 'git@github.com:brettviren/edep-sim-phlex.git' 'edep-sim-phlex'
-
-[devel/edep-simphony-plugin]
-checkout = git clone 'git@github.com:brettviren/edep-simphony-plugin' 'edep-simphony-plugin'
-
-[devel/edep-sim]
-checkout = git clone 'git@github.com:clarkmcgrew/edep-sim.git' 'edep-sim'
-
-[devel/phlex]
+[reference/phlex]
 checkout = git clone 'https://github.com/Framework-R-D/phlex.git' 'phlex'
+

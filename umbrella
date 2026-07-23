@@ -4,9 +4,16 @@
 # package under devel/ for a given Spack environment.
 #
 # Usage:
-#   umbrella <env> config|build [options] [<package> ...]
-#   umbrella <env> test [<testname> ...]
+#   umbrella [-e|--env <env>] concretize|install [spack options]
+#   umbrella [-e|--env <env>] config|build [options] [<package> ...]
+#   umbrella [-e|--env <env>] test [<testname> ...]
 #   umbrella deps [cmake-examine options]
+#
+# The Spack environment is chosen, in order of decreasing precedence, by:
+#   1. the -e/--env <env> option,
+#   2. the XEROSERE_UMBRELLA_ENV environment variable,
+#   3. the hard-wired default "gcc15".
+# (The -e/--env option must precede the subcommand.)
 #
 # <env> selects a Spack environment and thus these locations (relative to the
 # project root, which is the directory holding this script):
@@ -16,18 +23,26 @@
 #   installs/envs/<env>/      shared install prefix
 #
 # Subcommands:
+#   concretize  run "spack -e <envdir> concretize -f" to (re)concretize the
+#               Spack environment.  Extra args are passed through.
+#   install     run "spack -e <envdir> install" then rebuild the environment
+#               view FROM SCRATCH (remove the view root, then
+#               "spack -e <envdir> env view regenerate").  Spack's regenerate
+#               short-circuits on a content-hash marker and can otherwise leave a
+#               stale/partial view; a clean rebuild is the only reliable cure.
+#               Extra args (e.g. -j N) are passed through to "spack install".
 #   config   run "cmake -S ... -B ..." (the configure step)
 #   build    run "cmake --build ..."   (the build step)
 #   deps     draw the package-level dependency graph of the devel/ packages by
-#            delegating to the "cmake-examine deps" tool.  This does not use
-#            <env>: invoke it as "umbrella deps [cmake-examine options]".  Any
-#            arguments are passed verbatim to cmake-examine, e.g.
-#            "umbrella deps -o devel-deps.png --libs".
+#            delegating to the "cmake-examine deps" tool.  This is env-independent
+#            (any -e/--env is ignored): invoke it as
+#            "umbrella deps [cmake-examine options]".  Any arguments are passed
+#            verbatim to cmake-examine, e.g. "umbrella deps -o devel-deps.png --libs".
 #   test     run project-level tests.  Each test is a directory tests/<name>/
 #            with an executable run.sh, invoked as "run.sh <env> <outdir>"
 #            where <outdir> is builds/envs/<env>/xerosere/<name>/.  With no
 #            <testname> all tests are run.  A test exits 0=pass, 77=skip,
-#            other=fail; "umbrella <env> test" exits non-zero if any failed.
+#            other=fail; "umbrella test" exits non-zero if any failed.
 #
 # With no <package>, the subcommand operates on the whole super-build.
 #
@@ -68,18 +83,32 @@ usage() {
     exit "${1:-0}"
 }
 
-# --- parse leading positional arguments -------------------------------------
-[ $# -ge 1 ] || usage 1
-case "$1" in
-    -h|--help) usage 0 ;;
-esac
+# --- resolve the target environment and parse leading options ---------------
+# Environment precedence: -e/--env option > $XEROSERE_UMBRELLA_ENV > default.
+env="${XEROSERE_UMBRELLA_ENV:-gcc15}"
+
+# Consume any options that precede the subcommand (currently -e/--env and
+# -h/--help).  Everything from the subcommand onward is left in "$@".
+while [ $# -ge 1 ]; do
+    case "$1" in
+        -h|--help) usage 0 ;;
+        -e|--env)
+            [ $# -ge 2 ] || die "option '$1' requires an argument"
+            env="$2"; shift 2 ;;
+        -e=*|--env=*) env="${1#*=}"; shift ;;
+        --) shift; break ;;
+        *) break ;;
+    esac
+done
+
+[ $# -ge 1 ] || die "missing subcommand (config|build|test|deps); see --help"
+sub="$1"; shift
 
 # --- deps: package-level dependency graph (env-independent) -----------------
 # Delegate to "cmake-examine deps".  Collect every package directory under
 # devel/ (skipping the super-build CMakeLists.txt and any non-directory) and
 # pass them, followed by any extra arguments, to cmake-examine.
-if [ "$1" = deps ]; then
-    shift
+if [ "$sub" = deps ]; then
     command -v cmake-examine >/dev/null 2>&1 || die "cmake-examine not found on PATH"
     dirs=()
     for d in "$root"/devel/*/; do
@@ -91,21 +120,58 @@ if [ "$1" = deps ]; then
     exit 0
 fi
 
-env="$1"; shift
-
-[ $# -ge 1 ] || die "missing subcommand (config|build|test); see --help"
-sub="$1"; shift
 case "$sub" in
-    config|build|test) ;;
-    *) die "unknown subcommand '$sub' (expected config, build or test)" ;;
+    config|build|test|concretize|install) ;;
+    *) die "unknown subcommand '$sub' (expected config, build, test, concretize, install or deps)" ;;
 esac
 
 # --- environment-derived locations ------------------------------------------
-view="$root/extern/envs/$env/view"
+envdir="$root/extern/envs/$env"     # directory holding spack.yaml (spack -e target)
+view="$envdir/view"                 # Spack environment view root (spack.yaml: view.default.root)
 build="$root/builds/envs/$env"
 install="$root/installs/envs/$env"
 
-[ -d "$root/extern/envs/$env" ] || die "no such environment: extern/envs/$env"
+[ -d "$envdir" ] || die "no such environment: extern/envs/$env"
+
+# --- concretize / install: drive the Spack environment ----------------------
+# These operate on the Spack environment (extern/envs/<env>) and must NOT require
+# the view's toolchain to pre-exist (a fresh env has no view until installed).
+if [ "$sub" = concretize ] || [ "$sub" = install ]; then
+    spack="$root/extern/spack/bin/spack"
+    [ -x "$spack" ] || spack="$(command -v spack 2>/dev/null)" || \
+        die "spack not found at extern/spack/bin/spack or on PATH"
+
+    case "$sub" in
+        concretize)
+            # Re-concretize the whole environment; -f allows spack.lock to change.
+            # Extra args (e.g. --fresh) are passed through verbatim.
+            run "$spack" -e "$envdir" concretize -f "$@"
+            ;;
+        install)
+            # Install the environment, passing any extra args (e.g. -j N) through.
+            run "$spack" -e "$envdir" install "$@"
+
+            # Guarantee the view is not stale.  Spack's view regeneration
+            # short-circuits when a content-hash marker file (<view>/.spack-view)
+            # already matches, so a plain 'env view regenerate' -- and the
+            # implicit regenerate that 'install' runs -- can be a NO-OP even when
+            # the view is actually stale or partial (the failure mode seen when
+            # e.g. phlex 0.3.2's CMake files went missing from the view, and the
+            # likely source of the stale gcc-runtime entries).  Deleting only the
+            # marker is not enough: _ensure_safe_to_replace() refuses to rebuild
+            # over a non-empty, unmarked directory.  So remove the whole view
+            # root and let regenerate rebuild it cleanly from the current lock --
+            # the only way that reliably eliminates staleness.
+            # (See spack/environment/environment.py: ViewDescriptor.regenerate,
+            #  _is_up_to_date, _ensure_safe_to_replace.)
+            if [ -e "$view" ] || [ -L "$view" ]; then
+                run rm -rf "$view"
+            fi
+            run "$spack" -e "$envdir" env view regenerate
+            ;;
+    esac
+    exit 0
+fi
 
 # --- test: run project-level tests (tests/<name>/run.sh) --------------------
 # Each test's run.sh is invoked as "run.sh <env> <outdir>" and reports its
@@ -181,6 +247,58 @@ config_flags=(
     -DCMAKE_CXX_STANDARD=23
 )
 
+# --- detect the "view-shadowed sub-build cache" trap ------------------------
+# When a package is promoted from the Spack view into devel/ (e.g. wire-cell-
+# toolkit), a consumer sub-build that was first configured BEFORE the devel
+# package was installed will have cached the dependency's headers/libs into the
+# view.  find_library/find_path never re-evaluate a cached hit, and the
+# super-build's ExternalProject re-runs only the build step (BUILD_ALWAYS), never
+# reconfigure -- so the sub-build keeps linking the stale, wrong-version view
+# copy (symptom: undefined-reference link errors against a since-changed ABI).
+#
+# Scan every CMakeCache.txt under a build root for a resolved *_LIBRARY /
+# non-INCLUDE *_DIR entry whose value lives under the view WHILE the shared
+# install prefix now provides that same artifact (swap the view prefix for the
+# install prefix and test existence).  Genuine view-only externals (Boost,
+# Arrow, ...) have no install counterpart and are not reported.  Emits a warning
+# and the exact remedy; never fatal.
+warn_stale_caches() {
+    local scanroot="$1"
+    [ -d "$scanroot" ] || return 0
+    local hits=0 cache line name val rel cand relb
+    declare -A _stale_pkgs=()
+    while IFS= read -r cache; do
+        while IFS= read -r line; do
+            name="${line%%:*}"
+            case "$name" in *_INCLUDE_DIR) continue ;; esac
+            val="${line#*=}"
+            case "$val" in "$view"/*) ;; *) continue ;; esac
+            rel="${val#"$view"/}"
+            cand="$install/$rel"
+            [ -e "$cand" ] || continue
+            if [ "$hits" -eq 0 ]; then
+                echo "umbrella: WARNING: stale sub-build cache(s) pinned to the Spack view;" >&2
+                echo "umbrella:   the install prefix now provides the same artifact, so these" >&2
+                echo "umbrella:   builds would keep linking the OLD view copy until removed:" >&2
+            fi
+            hits=$((hits+1))
+            echo "umbrella:   [$cache]" >&2
+            echo "umbrella:     $name = $val" >&2
+            echo "umbrella:     shadows $cand" >&2
+            relb="${cache#"$build"/}"
+            _stale_pkgs["$build/${relb%%/*}"]=1
+        done < <(grep -E '^[A-Za-z0-9_]+_(LIBRARY|DIR):(FILEPATH|PATH)=' "$cache" 2>/dev/null || true)
+    done < <(find "$scanroot" -name CMakeCache.txt 2>/dev/null)
+    if [ "$hits" -gt 0 ]; then
+        echo "umbrella:   remedy: remove the affected build dir(s) and reconfigure:" >&2
+        local p
+        for p in "${!_stale_pkgs[@]}"; do
+            echo "umbrella:     rm -rf $p" >&2
+        done
+        echo "umbrella:   then re-run: umbrella -e $env config" >&2
+    fi
+}
+
 # --- whole super-build (no packages listed) ---------------------------------
 if [ ${#pkgs[@]} -eq 0 ]; then
     case "$sub" in
@@ -189,6 +307,9 @@ if [ ${#pkgs[@]} -eq 0 ]; then
                 "${config_flags[@]}" \
                 -DCMAKE_PREFIX_PATH="$view" \
                 "${opts[@]}"
+            # Warn about any stale sub-build caches left by earlier builds so the
+            # next 'build' does not silently link a shadowed view copy.
+            warn_stale_caches "$build"
             ;;
         build)
             run "$cmake" --build "$build" "${opts[@]}"
@@ -214,9 +335,10 @@ for pkg in "${pkgs[@]}"; do
                 -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=TRUE \
                 -DCMAKE_INSTALL_RPATH="$install/lib;$install/lib64" \
                 "${opts[@]}"
+            warn_stale_caches "$pbuild"
             ;;
         build)
-            [ -d "$pbuild" ] || die "package '$pkg' not configured: run 'umbrella $env config $pkg' first"
+            [ -d "$pbuild" ] || die "package '$pkg' not configured: run 'umbrella -e $env config $pkg' first"
             run "$cmake" --build "$pbuild" "${opts[@]}"
             ;;
     esac

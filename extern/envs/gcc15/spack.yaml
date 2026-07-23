@@ -33,6 +33,15 @@ spack:
     specs:
     - gcc@15                  # built by host gcc; runtime = gcc-runtime@11.3.0
 
+  # gcc@12 lives in its own group: with unify:true two "gcc" package specs cannot
+  # share a group (one version per package), so the compiler that builds py-torch
+  # is built apart from the stage-2 gcc@15. Built by host gcc; used as %gcc@12
+  # (its only consumer is the py-torch spec below -- nvcc needs a <=gcc@14 host).
+  - group: gcc12
+    explicit: false          # implicit -> GC-eligible; build dep only
+    specs:
+    - gcc@12
+
   - group: main
     needs: [bootstrap]
     specs:
@@ -40,15 +49,22 @@ spack:
     - libelf %gcc@15          # built by stage-2; shares that gcc-runtime@15
 
   - group: apps
-    needs: [main]            # built with the stage-2 (main) gcc@15
+    needs: [main, gcc12]     # C++23 apps on stage-2 gcc@15; py-torch on gcc@12
     specs:
     # FIXME: when xerosere is built by Spack, +arrow and arrow will be included.
     # For now, while we only do local dev builds, we add root +arrow explicitly as a way to get arrow included.
-    - root +arrow %gcc@15
+    # %gcc@12 (the ONLY node not on gcc@15): nvcc rejects a gcc@15 host for
+    # CUDA 12.x, so py-torch builds with gcc@12 and links the gcc@15 shared
+    # layer. WCT links this as its libtorch via +torch (see WCT recipe note).
+    - py-torch +cuda ~distributed cuda_arch=89 %gcc@12
+    - root +arrow cxxstd=23 %gcc@15
     # Some versions are set manually to force local upgrade over past concretizations
-    - phlex@0.3.2 +form %gcc@15
+    - phlex@0.3.2 +form  cxxstd=23 %gcc@15
     - wire-cell-data@0.2.0
-    - wire-cell-toolkit@0.36.1 +hdf +root cxxstd=23 %gcc@15
+    # ~cuda (explicit): WCT compiles no CUDA of its own, so it stays gcc@15/C++23
+    # and just links the gcc@12-built py-torch+cuda. +cuda here would make WCT an
+    # nvcc CudaPackage and reintroduce the gcc@15/CUDA-12 conflict.
+    - wire-cell-toolkit@master +hdf +root +torch ~cuda cxxstd=23 %gcc@15
     - hepmc3 +rootio
     - edepsim@4.3.0 cxxstd=23 %gcc@15
     # This version is tied to the host's nvidia driver version!
@@ -59,6 +75,16 @@ spack:
     - ninja
 
   packages:
+    # No global gcc@12 floor.  CUDA 12.x's nvcc refuses a gcc@15 host
+    # (CudaPackage: conflicts %gcc@15: when %cuda@:12.9), so py-torch+cuda -- an
+    # nvcc-compiled CudaPackage -- cannot build with gcc@15.  Rather than floor
+    # the WHOLE shared layer to gcc@12 (which forks a second, gcc-runtime@12 copy
+    # of every low-level lib and makes the flat view collide), we pin ONLY
+    # py-torch to %gcc@12 (see its spec above).  Everything else stays on the
+    # stage-2 gcc@15 / gcc-runtime@15, so each shared lib is a single node and the
+    # view is clean.  py-torch (gcc@12) links those gcc@15-built libs against the
+    # deduped gcc-runtime@15 -- the one gcc@12->gcc@15 edge this design accepts,
+    # confined to py-torch alone.  See extern/envs/gccxx for the fuller writeup.
     # Default the Jsonnet engine to go-jsonnet (pure-Go, much faster on large
     # configs). `libjsonnet` is a virtual it provides (building the libjsonnet++
     # wrapper against its engine) alongside the C/C++ `jsonnet` package; set the
@@ -66,6 +92,13 @@ spack:
     all:
       providers:
         libjsonnet: [go-jsonnet]
+        # Use OpenBLAS for BLAS/LAPACK. The default provider pulled
+        # intel-oneapi-mkl, whose offline installer 404s on the Spack mirror and
+        # fails SSL verification against Intel's host -- and it is a huge
+        # proprietary binary. OpenBLAS builds from source and is a fully
+        # supported py-torch BLAS backend.
+        blas: [openblas]
+        lapack: [openblas]
 
   concretizer:
     unify: true               # within a group; one gcc-runtime@15 per group
@@ -75,3 +108,16 @@ spack:
       root: view              # -> extern/envs/gcc15/view
       group: [main, apps]     # expose toolchain + apps; bootstrap stays out
       link: all               # roots + transitive run+link deps (headers/libs for dev)
+      # Pinning py-torch to gcc@12 forks a gcc@12 / gcc-runtime@15 copy of zstd
+      # and zlib-ng (the shared app-layer copy) that coexists with the
+      # host-gcc@11.3-built copies the stage-2 gcc@15 compiler drags in through
+      # its own LTO/link closure. Both land in the flat view and project to the
+      # same prefix (view-creation error). These two are the ONLY duplicates
+      # (verified against the lock: only zstd/zlib-ng appear as >1 build in the
+      # main+apps closure). Drop the host-compiler copies: gcc@15 still resolves
+      # them via store RPATH, and downstream dev uses the app-layer copies (which
+      # provide zlib). NB: matched by the host compiler version -- if the host
+      # gcc changes, update it here (the app copies are %gcc@12 / target=zen3).
+      exclude:
+      - 'zstd %gcc@11.3.0'
+      - 'zlib-ng %gcc@11.3.0'
