@@ -7,8 +7,8 @@
 # a passthrough), runs it via `phlexed` (which — unlike `phlex -c` — resolves
 # Jsonnet imports via -J), and asserts it runs to completion.  This exercises:
 #   - the DSL emitting a valid { driver, sources, modules } object,
-#   - the wcph_deposet_filter module reading its typed `phlex` block
-#     (PhlexAlgorithmConfig: name/concurrency/inputs/outputs),
+#   - the wcph_deposet_filter shape module reading its top-level inputs/outputs
+#     selector arrays,
 #   - implicit source->filter edge formation from matching product descriptors.
 #
 # `phlexed` is unofficial, so it is used only here (a top-level xerosere test),
@@ -52,7 +52,7 @@ mkdir -p "$outdir"
 # Plugins: wire-cell-phlex modules (build tree) + the phlex framework plugins
 # (generate_layers driver) in the view.
 export PHLEX_PLUGIN_PATH="$build:$view/lib"
-# WCT sub-graph configs (deposet-passthrough.jsonnet) resolved via WIRECELL_PATH.
+# WCT sub-graph configs (deposet-passthrough-generic.jsonnet) resolved via WIRECELL_PATH.
 export WIRECELL_PATH="$root/devel/wire-cell-phlex/cfg"
 export LD_LIBRARY_PATH="$build:$install/lib:$install/lib64:$view/lib:$view/lib64:${LD_LIBRARY_PATH:-}"
 

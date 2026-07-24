@@ -3,14 +3,14 @@
 // import resolves (plain `phlex -c` has no import search path).
 local phlex = import 'phlex/phlex.libsonnet';
 
-local src = phlex.source('deposet_source', 'wcph_deposet_source',
+local src = phlex.source('deposet_source', 'wcph_deposet_gen',
                          layer='event', outputs=['deposet']);
 
 local filt = phlex.node('deposet_filter', 'wcph_deposet_filter', layer='event',
                         inputs=[src.output('deposet')],
                         outputs=['deposet'],
-                        config={ executor: { wct_config: 'deposet-passthrough.jsonnet',
-                                             wct_plugins: ['WireCellPgraph'] } });
+                        config={ wct_config: 'deposet-passthrough-generic.jsonnet',
+                                 wct_plugins: ['WireCellPgraph'] });
 
 phlex.workflow(
   phlex.generate_layers({ event: { parent: 'job', total: 3, starting_number: 1 } }),
