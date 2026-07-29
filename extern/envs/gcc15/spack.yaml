@@ -4,15 +4,17 @@
 #   spack -e extern/envs/gcc15 concretize -f
 #   spack -e extern/envs/gcc15 install
 #
-# Design notes (verified against Spack 1.2.0):
-#  * gcc-runtime tracks the compiler that BUILT a node. Stage-1 gcc@15 (built by
-#    the host gcc) carries gcc-runtime@11.3.0; stage-2 gcc@15 (built BY stage-1)
-#    carries gcc-runtime@15. The two groups (bootstrap -> main) express that, and
-#    'needs:' makes stage-1 available as the %gcc@15 compiler for the main group.
+# Design notes (verified against Spack 1.2.2):
+#  * gcc-runtime tracks the compiler that BUILT a node. The host toolchain is
+#    gcc@12.2.0 (Debian bookworm), which Spack detects as an external compiler;
+#    stage-1 gcc@15 (built by that host gcc@12.2.0) carries gcc-runtime@12.2.0,
+#    and stage-2 gcc@15 (built BY stage-1) carries gcc-runtime@15. The two groups
+#    (bootstrap -> main) express that, and 'needs:' makes stage-1 available as the
+#    %gcc@15 compiler for the main group.
 #  * Downstream groups 'needs: [main]' so they build with the stage-2 (main)
 #    gcc@15 and reuse its gcc-runtime@15 -- never the throwaway bootstrap gcc.
 #  * The bootstrap stage (and gcc's host-built lib deps) still pull
-#    gcc-runtime@11.3.0 into the STORE -- unavoidable in 1.2.0 because per-group
+#    gcc-runtime@12.2.0 into the STORE -- unavoidable in 1.2.x because per-group
 #    'override:' currently crashes the solver. It does NOT pollute the VIEW:
 #    Spack keeps only the newest runtime (environment.py:_exclude_duplicate_runtimes).
 #
@@ -31,7 +33,7 @@ spack:
   - group: bootstrap
     explicit: false          # implicit -> GC-eligible; the throwaway stage-1
     specs:
-    - gcc@15                  # built by host gcc; runtime = gcc-runtime@11.3.0
+    - gcc@15                  # built by host gcc@12.2.0; runtime = gcc-runtime@12.2.0
 
   # gcc@12 lives in its own group: with unify:true two "gcc" package specs cannot
   # share a group (one version per package), so the compiler that builds py-torch
@@ -90,6 +92,20 @@ spack:
     # wrapper against its engine) alongside the C/C++ `jsonnet` package; set the
     # provider below to `jsonnet` to fall back to the C engine.
     all:
+      # Build the whole stack for the x86_64_v3 microarchitecture baseline
+      # (SSE4.2/AVX/AVX2/BMI/FMA). The host is zen4 (x86_64_v4-capable) but v3
+      # keeps the binaries portable across the cluster's older nodes while still
+      # enabling the vector ISA every modern package benefits from. This is a hard
+      # 'require' (not a 'target:' preference): the concretizer's default "pick the
+      # newest host microarch" objective outranks a soft preference, so only a
+      # requirement pins the whole DAG. The any_of allows the generic x86_64 family
+      # as a fallback -- the solver maximizes microarch within the allowed set, so
+      # every buildable node takes x86_64_v3 while binary/external nodes that only
+      # ship generic x86_64 (cuda, glibc, the host bootstrap gcc) stay satisfiable.
+      require:
+      - any_of:
+        - target=x86_64_v3
+        - target=x86_64
       providers:
         libjsonnet: [go-jsonnet]
         # Use OpenBLAS for BLAS/LAPACK. The default provider pulled
@@ -100,6 +116,13 @@ spack:
         blas: [openblas]
         lapack: [openblas]
 
+  config:
+    # Pad the install tree so binaries are relocatable (long, fixed-length RPATHs
+    # that can be rewritten in place for build caches / prefix moves). The store
+    # root ($spack/opt/spack) is 49 chars; 128 leaves ample room to pad into.
+    install_tree:
+      padded_length: 128
+
   concretizer:
     unify: true               # within a group; one gcc-runtime@15 per group
 
@@ -108,16 +131,14 @@ spack:
       root: view              # -> extern/envs/gcc15/view
       group: [main, apps]     # expose toolchain + apps; bootstrap stays out
       link: all               # roots + transitive run+link deps (headers/libs for dev)
-      # Pinning py-torch to gcc@12 forks a gcc@12 / gcc-runtime@15 copy of zstd
-      # and zlib-ng (the shared app-layer copy) that coexists with the
-      # host-gcc@11.3-built copies the stage-2 gcc@15 compiler drags in through
-      # its own LTO/link closure. Both land in the flat view and project to the
-      # same prefix (view-creation error). These two are the ONLY duplicates
-      # (verified against the lock: only zstd/zlib-ng appear as >1 build in the
-      # main+apps closure). Drop the host-compiler copies: gcc@15 still resolves
-      # them via store RPATH, and downstream dev uses the app-layer copies (which
-      # provide zlib). NB: matched by the host compiler version -- if the host
-      # gcc changes, update it here (the app copies are %gcc@12 / target=zen3).
-      exclude:
-      - 'zstd %gcc@11.3.0'
-      - 'zlib-ng %gcc@11.3.0'
+      # NOTE: no 'exclude' is currently needed. Historically zstd and zlib-ng
+      # could appear as TWO builds -- a host-compiler copy (dragged into the
+      # closure by the stage-2 gcc@15's own LTO/link deps) plus a separate
+      # app-layer copy -- which collide in the flat view (both project to the same
+      # prefix: a view-creation error), so they were excluded by host compiler
+      # version. With the current toolchain the host compiler IS the app-layer
+      # gcc@12.2.0, so each of zstd/zlib-ng resolves to a SINGLE build and there
+      # is nothing to exclude (verified: one node each in the main+apps closure).
+      # If a future host/compiler change re-forks them, restore an 'exclude:'
+      # keyed to the DUPLICATE copy's compiler -- never to the app-layer gcc@12.2.0,
+      # which is the copy you want to keep in the view.
