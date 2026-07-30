@@ -15,3 +15,8 @@ data
 build
 log*
 reference
+python
+*.npy
+*.log
+.claude
+.beads

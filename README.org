@@ -1,7 +1,18 @@
 #+title: DUNE Xerosere umbrella project for new Phlex based ecosystem
 
-This is the working title for the new Phlex-based DUNE software ecosystem that I
-am developing.  The name is of course a play on "DUNE".  From wikipedia:
+#+begin_quote
+Note, the patterns this development project uses have been abstracted into the
+[[https://github.com/brettviren/xerosere][xerosere]] package for use by others for other development projects.
+#+end_quote
+
+DUNE Xerosere is the working title for a new DUNE software ecosystem.  It's
+goals include support to run in the [[https://github.com/Framework-R-D/phlex][Phlex]] framework the [[https://github.com/WireCell/wire-cell-toolkit][Wire-Cell Toolkit]],
+Geant4 via [[https://github.com/ClarkMcGrew/edep-sim][edep-sim]] and GPU accelerated optical physics with [[https://github.com/BNLNPPS/simphony][Simphony]] via the
+[[https://github.com/Ningclover/edep-simphony-plugin][edep-sim / simphony plugin]] and other important, major packages relevant to DUNE.
+
+* Name
+
+The name is, of course, a play on the "DUNE" name.  From wikipedia:
 
 #+begin_quote
 A [[https://en.wikipedia.org/wiki/Psammosere][psammosere]] is the sequence of plant succession that has been initiated on
@@ -18,32 +29,40 @@ deserts, sand dunes, salt deserts, rock deserts etc. A xerosere may include
 lithoseres (on rock) and psammoseres (on sand).
 #+end_quote
 
-It's apt because Phlex currently lacks "water" and yet we must grow an entire
-dune ecosystem on it.
+Never explain a joke: When this project started, Phlex lacked "water" (all the
+stuff needed to build applications on top of phlex) and dune-xerosere is the
+process by which we grow an entire dune ecosystem.
 
 Punironically, this package provides an "umbrella" to cover this new ecosystem.
 
-One goal of xerosere is that packages are *well factored*.  Dumping ground
-packages lead to dependency aggregation and tight interdependencies between
-code: classic spaghetti.  Better factoring comes with a natural cost of more and
-smaller packages that are split along dependency lines.  This takes effort to
-produce by the developers and can lead to more effort for builders/installers.
-To solve the latter problem, DUNE Xerosere exploits Spack for deployment build
-and CMake "super package" pattern for local development.  Examples below
-describe how to exercise both aggregate build methods.
+* Goals
 
-Here are the major building blocks of th DUNE xerosere umbrella:
+- Provide the actual integration of the suite of target packages with Phlex.
 
-- Source repos are aggregated and manasged with =mr= (myrepos).
-- Spack 1.2+ in =extern/spack/= provides build, dependencies and environment view. 
-- Spack package repos in =extern/repos/= augment Spack's =builtins=.
-- A CMake umbrella "super build" to build all the new packages.
+- Develop a "lingua franca" data model for DUNE in the Phlex era.
+
+- Develop a "configuration layer" to bring uniformity across configurable Phlex algorithms.
+
+- Develop patterns to manage complexity in Phlex and Wire-Cell configuration across the many DUNE detectors and types of jobs.
+
+- Keep all packages well factored along lines of dependency while mitigating the complexity of developer workflow that such multiple, fine-grained packages can otherwise lead to.
+
+- Develop and extract a portiable development workflow that others can adopt and benefit from.
+
+- Develop solutions to specific problems with an eye toward generality.
+
+- Adhere to modular, portable design and avoid creating lock-in.
 
 * Bootstrapping
 
+This section describes one way to get to a point where the DUNE Xerosere
+ecosystem can be built and run.  Similar bootstrapping can be done on, eg Alma 9
+hosts.  Note, =/cvmfs/= mount is *not* needed nor involved.  Future work, likely
+part of [[https://github.com/brettviren/xerosere][xerosere]] may allow leveraging packages provided by a CVMFS mount.
+
 ** OS
 
-Debian 12
+Debian 12 as one example.  Given the portability of the stack, other OSes should pose no particular problem.
 
 #+begin_example
   # apt-get install -y \
@@ -54,9 +73,8 @@ Debian 12
   # extrepo enable mise && apt-get update && apt-get install -y mise
 #+end_example
 
-Inclusion of =mise= helps bring in some other tools like claude.
-
-Given the portability of Phlex and xerosere packages, other OSes should pose no problems.
+Inclusion of =mise= allows other modern tools to be used very easily.  If omitted,
+some tools may require more specific installation instructions.
 
 ** Git
 
@@ -100,19 +118,19 @@ into other environment setup methods.
 
 ** Spack
 
-Xerosere jumps on the recently released [[https://spack.readthedocs.io/en/v1.2.0/][Spack 1.2]] to make use of parallel
-builds, concretization groups and +isolation+ (still better handled by setting
-Spack's scope-related env vars).
-
-The =mr co= clones the Spack source and the direnv integration puts =spack= in your
-path and sets variables so that Spack will not touch =~/.spack/=.  Everything ends
-up under =extern/=.  The full Spack shell environment is not entered and in
-particular the =spack= command remains real and not a shell function/alias.
+Xerosere uses [[https://spack.readthedocs.io/en/v1.2.2/][Spack 1.2.2]] or perhaps newer.  The =mr co= clones the Spack source and the
+direnv integration puts =spack= in your path and sets variables so that Spack will
+not touch =~/.spack/=.  Everything ends up under =extern/=.  The full Spack shell
+environment is not entered and in particular the =spack= command remains real and
+not a shell function/alias.
 
 #+begin_example
 $ spack --version
-1.2.0 (63962ed90680d339004305075da272ae93c04a41)
+1.2.2 (3e19345b6e12f5ff1b874f4059622fc6a1fd804a)
 #+end_example
+
+Spack is configured (via the =.envrc= file) to *never* write to =~/.spack/=.  It will
+instead use directories under =extern/scopes/=.
 
 ** CUDA
 
@@ -228,3 +246,21 @@ $ spack -e extern/envs/xerosere concretize -f
 $ spack -e extern/envs/xerosere install -j 32
 #+end_example
 
+
+* Copyright and License
+
+DUNE Xerosere (=dune-xerosere=) is copyright 2026 Brookhaven Science
+Associates, LLC.
+
+This software is licensed under the Apache License, Version 2.0.  You may not
+use this software except in compliance with the License.  A copy of the License
+is distributed in the [[file:LICENSE][LICENSE]] file and may also be obtained at:
+
+#+begin_quote
+http://www.apache.org/licenses/LICENSE-2.0
+#+end_quote
+
+See the [[file:NOTICE][NOTICE]] file for attribution notices.  Unless required by
+applicable law or agreed to in writing, software distributed under the License is
+distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+either express or implied.
