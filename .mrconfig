@@ -99,3 +99,18 @@ checkout = git clone 'git@github.com:brettviren/edep-arrow.git' 'edep-arrow'
 
 [devel/phlex-config]
 checkout = git clone 'git@github.com:brettviren/phlex-config.git' 'phlex-config'
+
+[python/adove]
+checkout = git clone 'git@github.com:brettviren/adove.git' 'adove'
+
+[python/graphlex]
+checkout = git clone 'git@github.com:brettviren/graphlex.git' 'graphlex'
+
+[python/teepeesee]
+checkout = git clone 'git@github.com:brettviren/teepeesee.git' 'teepeesee'
+
+[python/wct-metrics]
+checkout = git clone 'git@github.com:brettviren/wct-metrics.git' 'wct-metrics'
+
+[python/xerosere]
+checkout = git clone 'git@github.com:brettviren/xerosere.git' 'xerosere'
