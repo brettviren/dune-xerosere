@@ -1,0 +1,171 @@
+// tests/spdir/spdir.jsonnet
+//
+// SPDIR (signal-processing direction) island workflow — Phlex reimplementation
+// of the legacy `spdir` Snakemake chain, first stage (ddm-179).
+//
+// Graph (WCT products flow island->island; every boundary is TAPPED to Arrow and
+// persisted to HDF5, matching devel/wire-cell-phlex-arrow/test/smoke-efield-quanta-pdhd.jsonnet):
+//
+//   edp_line_gen (source)                  ideal line segments  -> edep.observables (Arrow)
+//     -> wire_cell_phlex_arrow_edep_segments   Arrow segments   -> WCT TrackSegmentSet
+//     -> wcph_tracksegmentset_to_deposet       sample depos     -> WCT DepoSet         [SAMPLED]
+//     -> wcph_deposet_filter (COMMON drift)    WCT drift        -> WCT DepoSet         [DRIFTED]
+//         |-> wcph_deposet_to_frame (sim+sigproc)                -> WCT Frame          [SIM+SP]
+//         `-> wcph_deposet_to_frame (depo-flux-splat "true")     -> WCT Frame          [SPLAT]
+//
+//   Each WCT product is converted by wire_cell_phlex_arrow_convert and written by
+//   phlex_arrow_hdf_output, so spdir.h5 holds: edep.observables (segments),
+//   wc.tracksegmentset, wc.deposet (sampled), wc.deposet (drifted),
+//   wc.frame (sim+sigproc), wc.frame (splat "true").
+//
+// The sim+sigproc and splat islands consume the SAME drifted-depo product from
+// the common drift island (input:'drifted' -> they skip their internal drifter).
+//
+// Detector: pdhd APA0 (the configured DUNE detectors here are pdhd/pdvd; the
+// legacy spdir used pdsp, which has no island config in this tree yet).
+//
+// Run with tests/spdir/run.sh (sets PHLEX_PLUGIN_PATH / WIRECELL_PATH / GODEBUG).
+// This top file has NO jsonnet imports so it runs under `phlex -c` directly.
+
+// Tokens @SP@ / @DETECTOR@ / @CENTER@ are substituted by run.sh (phlex has no
+// TLA/ext-var support), so this .in is not run directly — run.sh generates the
+// concrete spdir.jsonnet next to the output.
+local deg = 3.141592653589793 / 180.0;  // hep-units: angles are radians
+local sp = '@SP@';          // signal processing: 'osp' (OmnibusSigProc) or 'spng'
+local det = '@DETECTOR@';   // 'pdhd' or 'pdvd'
+local center = @CENTER@;    // mm, inside det anode-0 drift volume (run.sh picks per-detector)
+local ai = '0';
+
+// The signal-processing island is selected by `sp`: only the simsp island's WCT
+// config + plugin set changes; the rest of the graph is identical.  Swapping
+// OmnibusSigProc for SPNG is therefore a one-line island-config change.
+local sp_defs = {
+  osp: {
+    config: 'dune/wct/job/sim-sigproc.jsonnet',
+    plugins: ['WireCellGen', 'WireCellSigProc', 'WireCellAux', 'WireCellPgraph'],
+  },
+  spng: {
+    config: 'dune/wct/job/sim-spng.jsonnet',
+    plugins: ['WireCellGen', 'WireCellSigProc', 'WireCellSpng', 'WireCellAux', 'WireCellPgraph'],
+  },
+};
+local spd = sp_defs[sp];
+
+// Matched direction arrays (theta_y from Y axis, theta_xz in the X-Z plane).
+// A modest fan at theta_y=90deg keeps every 0.5 m line inside APA0's drift volume.
+// local theta_xz_deg = [0, 5, 30, 45];
+local theta_xz_deg = [0, 5, 30, 45, 60, 75, 80, 85, 87, 89];
+
+{
+  driver: {
+    cpp: 'generate_layers',
+    layers: {
+      event: { parent: 'job', total: std.length(theta_xz_deg), starting_number: 0 },
+    },
+  },
+
+  sources: {
+    // Ideal ionization line segments, one per (theta_y, theta_xz) pair.
+    lines: {
+      cpp: 'edp_line_gen',
+      output_layer: 'event',
+      center: center,  // mm, inside the detector's anode-0 drift volume
+      length: 500.0,                      // mm (0.5 m)
+      // density defaults to 5000/mm (nominal MIP muon collected ionization)
+      theta_y: [90 * deg for t in theta_xz_deg],
+      theta_xz: [t * deg for t in theta_xz_deg],
+      coords: 'global',
+    },
+  },
+
+  modules: {
+    // --- Arrow edep.segments -> WCT TrackSegmentSet -----------------------
+    segs: {
+      cpp: 'wire_cell_phlex_arrow_edep_segments',
+      input_layer: 'event',
+      input_creator: 'input',      // edp_line_gen's provider creator label
+      input_suffix: 'observables',
+    },
+
+    // --- Sample point depos from the segments -----------------------------
+    // Ideal lines carry n_electrons directly, so use quanta mode (no recombination).
+    sampler: {
+      cpp: 'wcph_tracksegmentset_to_deposet',
+      inputs: [{ creator: 'segs', layer: 'event', suffix: 'tracksegmentset' }],
+      outputs: [{ suffix: 'deposet' }],
+      wct_config: 'tracksegmentset-sampler.jsonnet',
+      wct_plugins: ['WireCellGen', 'WireCellPgraph'],
+      wct_tla: { ionization: 'quanta' },
+    },
+
+    // --- COMMON drift island (deposet -> deposet) -------------------------
+    drift: {
+      cpp: 'wcph_deposet_filter',
+      inputs: [{ creator: 'sampler', layer: 'event', suffix: 'deposet' }],
+      outputs: [{ suffix: 'deposet' }],
+      wct_config: 'dune/wct/job/drift.jsonnet',
+      wct_plugins: ['WireCellGen', 'WireCellAux', 'WireCellPgraph'],
+      wct_tla: { detector: det, anode_index: ai, input: 'deposet' },
+    },
+
+    // --- CHAIN A: sim + signal processing (pre-drifted) -------------------
+    simsp: {
+      cpp: 'wcph_deposet_to_frame',
+      inputs: [{ creator: 'drift', layer: 'event', suffix: 'deposet' }],
+      outputs: [{ suffix: 'frame' }],
+      wct_config: spd.config,
+      wct_plugins: spd.plugins,
+      wct_tla: { detector: det, anode_index: ai, input: 'drifted' },
+    },
+
+    // --- CHAIN B: DepoFluxSplat "true" signal (pre-drifted) ---------------
+    splat: {
+      cpp: 'wcph_deposet_to_frame',
+      inputs: [{ creator: 'drift', layer: 'event', suffix: 'deposet' }],
+      outputs: [{ suffix: 'frame' }],
+      wct_config: 'dune/wct/job/splat.jsonnet',
+      // FieldResponse (used by DepoFluxSplat for origin/drift-speed) is a
+      // WireCellSigProc factory, so that plugin is required here too.
+      wct_plugins: ['WireCellGen', 'WireCellSigProc', 'WireCellAux', 'WireCellPgraph'],
+      wct_tla: { detector: det, anode_index: ai, input: 'drifted' },
+    },
+
+    // --- Arrow taps: convert every WCT product for persistence ------------
+    a_segs: {
+      cpp: 'wire_cell_phlex_arrow_convert',
+      input_layer: 'event',
+      input_creator: 'segs',
+      types: ['tracksegmentset'],
+    },
+    a_sampled: {
+      cpp: 'wire_cell_phlex_arrow_convert',
+      input_layer: 'event',
+      input_creator: 'sampler',
+      types: ['deposet'],
+    },
+    a_drifted: {
+      cpp: 'wire_cell_phlex_arrow_convert',
+      input_layer: 'event',
+      input_creator: 'drift',
+      types: ['deposet'],
+    },
+    a_simsp: {
+      cpp: 'wire_cell_phlex_arrow_convert',
+      input_layer: 'event',
+      input_creator: 'simsp',
+      types: ['frame'],
+    },
+    a_splat: {
+      cpp: 'wire_cell_phlex_arrow_convert',
+      input_layer: 'event',
+      input_creator: 'splat',
+      types: ['frame'],
+    },
+
+    // --- Persist all Arrow products (incl. the generator's edep.observables) to HDF5 ---
+    hdf_out: {
+      cpp: 'phlex_arrow_hdf_output',
+      output_file: 'spdir.h5',
+    },
+  },
+}

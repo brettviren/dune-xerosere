@@ -20,3 +20,6 @@ python
 *.log
 .claude
 .beads
+*.pdf
+*.dot
+*.png

@@ -87,3 +87,15 @@ checkout = git clone 'git@github.com:brettviren/dune-tdm-spack.git' 'dune-tdm-sp
 [reference/phlex]
 checkout = git clone 'https://github.com/Framework-R-D/phlex.git' 'phlex'
 
+
+[devel/hep-config]
+checkout = git clone 'git@github.com:brettviren/hep-config.git' 'hep-config'
+
+[devel/hep-units]
+checkout = git clone 'git@github.com:brettviren/hep-units.git' 'hep-units'
+
+[devel/edep-arrow]
+checkout = git clone 'git@github.com:brettviren/edep-arrow.git' 'edep-arrow'
+
+[devel/phlex-config]
+checkout = git clone 'git@github.com:brettviren/phlex-config.git' 'phlex-config'
