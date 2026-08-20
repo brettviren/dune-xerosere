@@ -11,7 +11,14 @@
 //     -> wcph_tracksegmentset_to_deposet       sample depos     -> WCT DepoSet         [SAMPLED]
 //     -> wcph_deposet_filter (COMMON drift)    WCT drift        -> WCT DepoSet         [DRIFTED]
 //         |-> wcph_deposet_to_frame (sim+sigproc)                -> WCT Frame          [SIM+SP]
+//         |    `-> wcph_frame_to_blobsets (img, sum tag=gauss)   -> vector<IBlobSet>   [BLOBS SP]
 //         `-> wcph_deposet_to_frame (depo-flux-splat "true")     -> WCT Frame          [SPLAT]
+//              `-> wcph_frame_to_blobsets (img, sum all traces)  -> vector<IBlobSet>   [BLOBS SPLAT]
+//
+//   Both imaging taps use SumSlices charge>0 (slicer=sum): the SP tap sums the
+//   'gauss' ROI charge, the splat tap sums all (untagged) true-signal traces.
+//   Both blob products (wc.blobs) are kept DISTINCT (creators img_sp / img_splat)
+//   and saved to spdir.h5.
 //
 //   Each WCT product is converted by wire_cell_phlex_arrow_convert and written by
 //   phlex_arrow_hdf_output, so spdir.h5 holds: edep.observables (segments),
@@ -130,6 +137,34 @@ local theta_xz_deg = [0, 5, 30, 45, 60, 75, 80, 85, 87, 89];
       wct_tla: { detector: det, anode_index: ai, input: 'drifted' },
     },
 
+    // --- 3D imaging: tile each frame into blobs (kept DISTINCT) -----------
+    // SP frame: SumSlices charge>0 over the OmnibusSigProc 'gauss' ROIs.  (The
+    // MaskSlices sigma-thresholding path can't consume this frame: OSP runs
+    // sparse here, so its gauss/wiener ROI trace sets have mismatched counts,
+    // which MaskSlices forbids.  slicer='mask' remains available in img.jsonnet
+    // for dense SP frames.)
+    img_sp: {
+      cpp: 'wcph_frame_to_blobsets',
+      inputs: [{ creator: 'simsp', layer: 'event', suffix: 'frame' }],
+      outputs: [{ suffix: 'blobs' }],
+      wct_config: 'dune/wct/job/img.jsonnet',
+      wct_plugins: ['WireCellGen', 'WireCellImg', 'WireCellAux', 'WireCellPgraph'],
+      // Distinct service_prefix: the two imaging islands share img.jsonnet, so
+      // without it their WCT component names (sumslices/tiling/blobsetsync)
+      // collide in the global NamedFactory (singleton per type+name) and the two
+      // islands would share the same stateful streaming nodes.
+      wct_tla: { detector: det, anode_index: ai, slicer: 'sum', sum_tag: 'gauss', service_prefix: 'imgsp_' },
+    },
+    // Splat "true" frame: SumSlices charge>0 over all (untagged) traces.
+    img_splat: {
+      cpp: 'wcph_frame_to_blobsets',
+      inputs: [{ creator: 'splat', layer: 'event', suffix: 'frame' }],
+      outputs: [{ suffix: 'blobs' }],
+      wct_config: 'dune/wct/job/img.jsonnet',
+      wct_plugins: ['WireCellGen', 'WireCellImg', 'WireCellAux', 'WireCellPgraph'],
+      wct_tla: { detector: det, anode_index: ai, slicer: 'sum', service_prefix: 'imgsplat_' },
+    },
+
     // --- Arrow taps: convert every WCT product for persistence ------------
     a_segs: {
       cpp: 'wire_cell_phlex_arrow_convert',
@@ -160,6 +195,18 @@ local theta_xz_deg = [0, 5, 30, 45, 60, 75, 80, 85, 87, 89];
       input_layer: 'event',
       input_creator: 'splat',
       types: ['frame'],
+    },
+    a_img_sp: {
+      cpp: 'wire_cell_phlex_arrow_convert',
+      input_layer: 'event',
+      input_creator: 'img_sp',
+      types: ['blobs'],
+    },
+    a_img_splat: {
+      cpp: 'wire_cell_phlex_arrow_convert',
+      input_layer: 'event',
+      input_creator: 'img_splat',
+      types: ['blobs'],
     },
 
     // --- Persist all Arrow products (incl. the generator's edep.observables) to HDF5 ---
