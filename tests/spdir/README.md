@@ -93,3 +93,20 @@ efficiency/bias/resolution metrics + a multi-page PDF:
 ```bash
 cd python/wct-metrics && uv run wct-metrics spdir <outdir>/spdir.h5 -o spdir.pdf
 ```
+
+## 3D-imaging blobs & Bee display
+
+The workflow also tiles each frame into 3D-imaging blobs with charge — SP via
+`BlobSolving`, splat "true" via `BlobDepoFill` — persisted as `wc.blobs`.  Inspect
+them with `wct-metrics blobs`, or export a [Bee](https://bnlif.github.io/wire-cell-docs/viz/uploads/)
+3D point-cloud zip (true depos + sampled SP/splat blobs) with `run-bee.sh`:
+
+```bash
+tests/spdir/run-bee.sh                 # run.sh + wct-metrics bee -> <outdir>/spdir-bee.zip
+BEE_REUSE=1 BEE_EVENTS=0 BEE_POINTS=5 tests/spdir/run-bee.sh   # reuse spdir.h5, one small event
+```
+
+`BEE_REUSE` skips re-running the workflow if `spdir.h5` exists; `BEE_EVENTS`
+(comma-separated event names) and `BEE_POINTS` (samples per blob) keep the zip
+small — the SP tiling is ghost-heavy (~8000 blobs/event).  Upload the zip at the
+Bee site.
