@@ -9,7 +9,7 @@
 # depo/segment products.
 #
 # The workflow is a token template (phlex has no TLA/ext-var support): this script
-# substitutes @SP@ / @DETECTOR@ / @CENTER@ into spdir.jsonnet.in to produce a
+# substitutes @SP@ / @DETECTOR@ / @CENTER@ / @TOFFSET@ into spdir.jsonnet.in to produce a
 # concrete spdir.jsonnet in the output directory, then runs it.
 #
 # Usage:
@@ -40,10 +40,12 @@ outdir="${4:-$root/builds/envs/$env_name/xerosere/$name}"
 case "$sp" in osp|spng) ;; *) die "sp must be 'osp' or 'spng' (got '$sp')";; esac
 case "$detector" in pdhd|pdvd) ;; *) die "detector must be 'pdhd' or 'pdvd' (got '$detector')";; esac
 
-# Per-detector line center (mm), inside the detector's anode-0 drift volume.
+# Per-detector line center (mm), inside the detector's anode-0 drift volume, and
+# BlobDepoFill time_offset (ns) aligning drifted-depo times with the splat frame's
+# slice times (calibrated for pdhd; pdvd reuses it pending its own calibration).
 case "$detector" in
-  pdhd) center='[-1000.0, 2000.0, 1000.0]' ;;
-  pdvd) center='[-1000.0, 2000.0, 1000.0]' ;;
+  pdhd) center='[-1000.0, 2000.0, 1000.0]'; toffset='63000' ;;
+  pdvd) center='[-1000.0, 2000.0, 1000.0]'; toffset='63000' ;;
 esac
 
 view="$root/extern/envs/$env_name/view"
@@ -57,7 +59,8 @@ h5ls="$view/bin/h5ls"
 [ -x "$phlex" ]                                              || skip "phlex not found ($phlex)"
 [ -e "$builds/edep-phlex/libedp_line_gen.so" ]              || skip "edep-phlex not built ($builds/edep-phlex)"
 [ -e "$builds/wire-cell-phlex/libwcph_deposet_filter.so" ]  || skip "wire-cell-phlex not built"
-[ -e "$builds/wire-cell-phlex/libwcph_frame_to_blobsets.so" ] || skip "imaging island (wcph_frame_to_blobsets) not built"
+[ -e "$builds/wire-cell-phlex/libwcph_frame_to_cluster.so" ] || skip "charged imaging island (wcph_frame_to_cluster) not built"
+[ -e "$builds/wire-cell-phlex/libwcph_frame_deposet_to_cluster.so" ] || skip "charged imaging island (wcph_frame_deposet_to_cluster) not built"
 [ -e "$builds/wire-cell-phlex-arrow/libwire_cell_phlex_arrow_convert.so" ] || skip "wire-cell-phlex-arrow not built"
 [ -e "$install/lib/libphlex_arrow_hdf_output.so" ]          || skip "phlex-arrow-hdf not installed"
 [ -d "$root/reference/wire-cell-data" ]                     || skip "wire-cell-data not present"
@@ -73,7 +76,7 @@ mkdir -p "$outdir"
 
 # --- generate the concrete workflow from the token template ------------------
 job="$outdir/spdir.jsonnet"
-sed -e "s|@SP@|$sp|g" -e "s|@DETECTOR@|$detector|g" -e "s|@CENTER@|$center|g" \
+sed -e "s|@SP@|$sp|g" -e "s|@DETECTOR@|$detector|g" -e "s|@CENTER@|$center|g" -e "s|@TOFFSET@|$toffset|g" \
     "$here/spdir.jsonnet.in" > "$job"
 
 # Phlex plugin search path: the edep-phlex, wire-cell-phlex and
@@ -116,20 +119,34 @@ have "/a_drifted/.*/deposet/deposet/wc.depo.charge Dataset"
 have "/a_segs/.*/tracksegmentset"
 have "/lines/edep_line_gen/observables/segments"
 
-# Both imaging blob products present and kept distinct (SP=mask, splat=sum).
-have "/a_img_sp/.*/blobs/blobs/wc.blob.value Dataset"
-have "/a_img_splat/.*/blobs/blobs/wc.blob.value Dataset"
+# Both charged imaging products present and kept distinct (path member is 'blobs'
+# under the 'cluster' product suffix: .../wc_cluster_to_arrow/cluster/blobs/...).
+have "/a_img_sp/.*/blobs/wc.blob.value Dataset"
+have "/a_img_splat/.*/blobs/wc.blob.value Dataset"
 
 # Non-empty: each wc.blobs table must have > 0 blob rows (h5ls prints "{N}").
-# Sum the wc.blob.value row counts across all events for creator $1.
 blob_rows() {
-    printf '%s\n' "$listing" | grep -E "/$1/.*/blobs/blobs/wc.blob.value Dataset" | \
+    printf '%s\n' "$listing" | grep -E "/$1/.*/blobs/wc.blob.value Dataset" | \
         grep -oE '\{[0-9]+\}' | tr -dc '0-9\n' | awk '{s+=$1} END {print s+0}'
 }
+# Non-zero CHARGE: the event-0 wc.blob.value dataset must contain a value != 0
+# (BlobSolving / BlobDepoFill actually put charge on the blobs).  h5ls -d prints
+# the Data: block; an all-zero table has no non-zero digit there.
+charged() {
+    local vp data
+    vp="$(printf '%s\n' "$listing" | grep -oE "/event/[^ ]*/$1/[^ ]*/blobs/wc.blob.value" | head -1)"
+    [ -n "$vp" ] || return 1
+    # Capture first: grep -q would SIGPIPE-kill h5ls under `set -o pipefail`.
+    data="$("$h5ls" -d "$out/$vp" 2>/dev/null | awk '/Data:/{d=1; next} d')"
+    [[ "$data" =~ [1-9] ]]
+}
 n_sp="$(blob_rows a_img_sp)"; n_splat="$(blob_rows a_img_splat)"
-say "blobs: SP(sum,gauss)=${n_sp:-0}  splat(sum)=${n_splat:-0}"
+say "blobs: SP(solve)=${n_sp:-0}  splat(depofill)=${n_splat:-0}"
 [ "${n_sp:-0}"    -gt 0 ] || die "a_img_sp wc.blobs table is EMPTY (SP frame tiled no blobs)"
 [ "${n_splat:-0}" -gt 0 ] || die "a_img_splat wc.blobs table is EMPTY (splat frame tiled no blobs)"
+charged a_img_sp    || die "a_img_sp wc.blob.value is all zero (BlobSolving assigned no charge)"
+charged a_img_splat || die "a_img_splat wc.blob.value is all zero (BlobDepoFill assigned no charge)"
+say "charge present on both SP (solved) and splat (true) blobs"
 
 say "PASS"
 exit 0
