@@ -116,6 +116,33 @@ def wire_paths(plane, period, nwires):
     return out
 
 
+def central_region_paths(plane, period):
+    """All impact paths that fall on the CENTRAL wire (|pitchpos| <= pitch/2).
+
+    These sub-pitch impacts sample the response across the face of relative
+    wire 0.  Neighbours are symmetric, so one side is shown: for each distinct
+    |pitchpos| the path with the larger |integral| is kept (this surfaces the
+    "real" side when a file is asymmetric or has a broken exact-centre path).
+    Returns an ordered list of (abs_pitchpos, pitchpos, current), inner-first.
+    """
+    pitch = plane.get("pitch")
+    if not pitch:
+        return []
+    half = 0.5 * pitch
+    paths = _paths_of(plane)
+    by_abs = {}
+    for p in paths:
+        pp = p.get("pitchpos", 0.0)
+        if abs(pp) > half + 1e-6 * pitch:
+            continue
+        key = round(abs(pp), 4)
+        cur = _current(p)
+        q = abs(integral(cur, period))
+        if key not in by_abs or q > by_abs[key][2]:
+            by_abs[key] = (float(pp), cur, q)
+    return [(k, v[0], v[1]) for k, v in sorted(by_abs.items())]
+
+
 # ------------------------------------------------------------------- reporting
 def analyze(fr, name, want_plane=None, all_paths=False, nwires=5):
     period = fr["period"]
@@ -166,14 +193,14 @@ def analyze(fr, name, want_plane=None, all_paths=False, nwires=5):
 
 
 # ------------------------------------------------------------------------- PDF
-def _signal_window(wps, period, pad_frac=0.15):
-    """Common x-range (ns) covering where any drawn path is significant."""
+def _window(curves, period, pad_frac=0.10):
+    """Common x-range (ns) covering where any curve exceeds 2% of the global max."""
+    gmax = max((np.abs(c).max() for c in curves), default=0.0)
+    if gmax <= 0:
+        return None
     lo, hi = None, None
-    for _, _, cur in wps:
-        s = np.abs(cur)
-        if s.max() <= 0:
-            continue
-        idx = np.where(s > 0.02 * s.max())[0]
+    for c in curves:
+        idx = np.where(np.abs(c) > 0.02 * gmax)[0]
         if not len(idx):
             continue
         a, b = idx[0] * period, idx[-1] * period
@@ -198,29 +225,45 @@ def make_pdf(fr_files, out_pdf, nwires=5):
             period = fr["period"]
             planes = [_plane_of(pe) for pe in fr["planes"]]
             n = len(planes)
-            fig, axes = plt.subplots(n, 1, figsize=(8.5, 3.0 * n + 0.5), squeeze=False)
+            # Gather every curve to be drawn first, so all subplots on the page
+            # can share ONE set of X and Y limits (comparable across planes).
+            per_plane = []       # list of (pl, [(label, current), ...])
+            all_curves = []
+            for pl in planes:
+                pitch = pl.get("pitch")
+                curves = []
+                # All impacts on the central wire (inner->outer, one side).
+                for absp, pp, cur in central_region_paths(pl, period):
+                    curves.append(("c @%.2fmm (Q=%+.3f)" % (absp, integral(cur, period)), cur))
+                # Neighbour wires 1..nwires-1 (single centre path each).
+                for wn, pp, cur in wire_paths(pl, period, nwires):
+                    if wn == 0:
+                        continue
+                    curves.append(("wire %d (Q=%+.3f)" % (wn, integral(cur, period)), cur))
+                per_plane.append((pl, curves))
+                all_curves.extend(c for _, c in curves)
+
+            win = _window(all_curves, period)
+            ymax = max((np.abs(c).max() for c in all_curves), default=1.0)
+
+            fig, axes = plt.subplots(n, 1, figsize=(8.5, 3.0 * n + 0.5),
+                                     squeeze=False, sharex=True, sharey=True)
             axes = axes[:, 0]
-            for ax, pl in zip(axes, planes):
+            for ax, (pl, curves) in zip(axes, per_plane):
                 pid = pl.get("planeid")
-                wps = wire_paths(pl, period, nwires)
-                t_us = np.arange(len(wps[0][2]) if wps else 0) * period / 1000.0
-                for wn, pp, cur in wps:
-                    q = integral(cur, period)
-                    ax.plot(np.arange(len(cur)) * period / 1000.0, cur,
-                            lw=1.3, label="wire %d  (Q=%+.3f)" % (wn, q))
-                win = _signal_window(wps, period)
-                if win:
-                    ax.set_xlim(win[0] / 1000.0, win[1] / 1000.0)
+                for label, cur in curves:
+                    ax.plot(np.arange(len(cur)) * period / 1000.0, cur, lw=1.1, label=label)
                 ax.axhline(0.0, color="0.7", lw=0.6)
-                w0 = next((c for k, _, c in wps if k == 0), None)
-                wlbl = ("  [W0 width %.0f ns]" % width10(w0, period)) if w0 is not None else ""
-                ax.set_title("planeid=%s: %s   pitch=%.3f mm%s"
-                             % (pid, plane_name.get(pid, "?"), pl.get("pitch", float("nan")), wlbl),
+                ax.set_title("planeid=%s: %s   pitch=%.3f mm"
+                             % (pid, plane_name.get(pid, "?"), pl.get("pitch", float("nan"))),
                              fontsize=9)
-                ax.set_xlabel("time [us]", fontsize=8)
                 ax.set_ylabel("induced current", fontsize=8)
-                ax.legend(fontsize=7, loc="best", ncol=2)
+                ax.legend(fontsize=6, loc="upper right", ncol=2)
                 ax.tick_params(labelsize=7)
+            if win:
+                axes[0].set_xlim(win[0] / 1000.0, win[1] / 1000.0)   # shared via sharex
+            axes[0].set_ylim(-1.05 * ymax, 1.05 * ymax)              # shared via sharey
+            axes[-1].set_xlabel("time [us]", fontsize=8)
             fig.suptitle(os.path.basename(path), fontsize=11)
             fig.tight_layout(rect=[0, 0, 1, 0.97])
             pdf.savefig(fig)
