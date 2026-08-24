@@ -38,14 +38,20 @@ env_name="${3:-gcc15}"
 outdir="${4:-$root/builds/envs/$env_name/xerosere/$name}"
 
 case "$sp" in osp|spng) ;; *) die "sp must be 'osp' or 'spng' (got '$sp')";; esac
-case "$detector" in pdhd|pdvd) ;; *) die "detector must be 'pdhd' or 'pdvd' (got '$detector')";; esac
+case "$detector" in pdhd|pdvd|pdsp) ;; *) die "detector must be 'pdhd', 'pdvd' or 'pdsp' (got '$detector')";; esac
 
 # Per-detector line center (mm), inside the detector's anode-0 drift volume, and
 # BlobDepoFill time_offset (ns) aligning drifted-depo times with the splat frame's
 # slice times (calibrated for pdhd; pdvd reuses it pending its own calibration).
 case "$detector" in
   pdhd) center='[-1000.0, 2000.0, 1000.0]'; toffset='63000' ;;
-  pdvd) center='[-1000.0, 2000.0, 1000.0]'; toffset='63000' ;;
+  # PDVD (vertical drift): anode-0 active region is Y in [-3364,-6] mm,
+  # Z in [0.5,1490.5] mm, drift in X from the anode (x=-3415) toward x=0.
+  # Center the line well inside (face0 half: Y in [-1685,-6]).
+  pdvd) center='[-1000.0, -1000.0, 745.0]'; toffset='63000' ;;
+  # PDSP APA0 (n=0) face0 drift volume spans x in [-3578, -1.6] mm; z-span of the
+  # first APA column is low z.  Center the 0.5 m line mid-drift in APA0.
+  pdsp) center='[-1000.0, 2000.0, 1000.0]'; toffset='63000' ;;
 esac
 
 view="$root/extern/envs/$env_name/view"
@@ -90,7 +96,7 @@ export LD_LIBRARY_PATH="$builds/edep-phlex:$install/lib:$install/lib64:$view/lib
 #   wire-cell-phlex/cfg   -> dune/wct/job/*.jsonnet, dune/wct/dets/*, tracksegmentset-sampler.jsonnet
 #   reference/wire-cell-data -> field responses / wires / noise (.json.bz2)
 #   share/wirecell       -> WCT built-in jsonnet library (wirecell.jsonnet, ...)
-export WIRECELL_PATH="$root/devel/wire-cell-phlex/cfg:$root/reference/wire-cell-data:$install/share/wirecell:$view/share/wirecell"
+export WIRECELL_PATH="$root/devel/wire-cell-phlex/cfg:$root/reference/wire-cell-data:$root/reference/dunereco/dunereco/DUNEWireCell/protodunevd:$install/share/wirecell:$view/share/wirecell"
 # Each WCT island runs the embedded go-jsonnet engine; with several islands per
 # event the Go async preemption can deadlock without this.
 export GODEBUG="${GODEBUG:+$GODEBUG,}asyncpreemptoff=1"
