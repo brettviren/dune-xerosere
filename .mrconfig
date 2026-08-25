@@ -114,3 +114,9 @@ checkout = git clone 'git@github.com:brettviren/wct-metrics.git' 'wct-metrics'
 
 [python/xerosere]
 checkout = git clone 'git@github.com:brettviren/xerosere.git' 'xerosere'
+
+[devel/phlex-ntuple]
+checkout = git clone 'git@github.com:brettviren/phlex-ntuple.git' 'phlex-ntuple'
+
+[devel/arrow-ntuple]
+checkout = git clone 'git@github.com:brettviren/arrow-ntuple.git' 'arrow-ntuple'
