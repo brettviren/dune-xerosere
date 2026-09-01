@@ -42,13 +42,25 @@ case "$detector" in pdhd|pdvd|pdsp) ;; *) die "detector must be 'pdhd', 'pdvd' o
 
 # Per-detector line center (mm), inside the detector's anode-0 drift volume, and
 # BlobDepoFill time_offset (ns) aligning drifted-depo times with the splat frame's
-# slice times (calibrated for pdhd; pdvd reuses it pending its own calibration).
+# slice times.
+#
+# DepoFluxSplat places charge using depo->time() + field_response.origin/speed
+# (gen/src/DepoFluxSplat.cxx), but BlobDepoFill only sees the raw drifted
+# depo->time() (no knowledge of the field response origin) -- toffset must supply
+# that same origin/speed term.  origin is a per-field-response-file constant
+# (matches each detector's response_plane, mm): PDHD dune-garfield-1d565
+# origin=100mm, PDVD protodunevd_FR_norminal_260324 origin=181mm.  origin/speed
+# gives a first estimate (PDHD: 100/1.6=62500ns, close to the working 63000ns);
+# empirical scans (tests/spdir, single ideal line, theta_xz in [0,89]deg) found
+# each detector's non-zero-charge toffset window and this picks its midpoint:
+# PDHD [62500,?] tightened to 63000 (prior calibration); PDVD scanned
+# [111000,123000]ns -> 117000ns (xerosere ddm-usy).
 case "$detector" in
   pdhd) center='[-1000.0, 2000.0, 1000.0]'; toffset='63000' ;;
   # PDVD (vertical drift): anode-0 active region is Y in [-3364,-6] mm,
   # Z in [0.5,1490.5] mm, drift in X from the anode (x=-3415) toward x=0.
   # Center the line well inside (face0 half: Y in [-1685,-6]).
-  pdvd) center='[-1000.0, -1000.0, 745.0]'; toffset='63000' ;;
+  pdvd) center='[-1000.0, -1000.0, 745.0]'; toffset='117000' ;;
   # PDSP APA0 (n=0) face0 drift volume spans x in [-3578, -1.6] mm; z-span of the
   # first APA column is low z.  Center the 0.5 m line mid-drift in APA0.
   pdsp) center='[-1000.0, 2000.0, 1000.0]'; toffset='63000' ;;
