@@ -1,11 +1,6 @@
-#+title: DUNE Xerosere umbrella project for new Phlex based ecosystem
+#+title: DUNE Xerosere project
 
-#+begin_quote
-Note, the patterns this development project uses have been abstracted into the
-[[https://github.com/brettviren/xerosere][xerosere]] package for use by others for other development projects.
-#+end_quote
-
-DUNE Xerosere is the working title for a new DUNE software ecosystem.  It's
+DUNE Xerosere is the working title for a new DUNE software ecosystem.  Its
 goals include support to run in the [[https://github.com/Framework-R-D/phlex][Phlex]] framework the [[https://github.com/WireCell/wire-cell-toolkit][Wire-Cell Toolkit]],
 Geant4 via [[https://github.com/ClarkMcGrew/edep-sim][edep-sim]] and GPU accelerated optical physics with [[https://github.com/BNLNPPS/simphony][Simphony]] via the
 [[https://github.com/Ningclover/edep-simphony-plugin][edep-sim / simphony plugin]] and other important, major packages relevant to DUNE.
@@ -33,7 +28,8 @@ Never explain a joke: When this project started, Phlex lacked "water" (all the
 stuff needed to build applications on top of phlex) and dune-xerosere is the
 process by which we grow an entire dune ecosystem.
 
-Punironically, this package provides an "umbrella" to cover this new ecosystem.
+The developer workflow itself has been abstracted into the reusable [[https://github.com/brettviren/xerosere][xerosere]]
+command, which provides the "umbrella" that covers this new ecosystem.
 
 * Goals
 
@@ -47,7 +43,7 @@ Punironically, this package provides an "umbrella" to cover this new ecosystem.
 
 - Keep all packages well factored along lines of dependency while mitigating the complexity of developer workflow that such multiple, fine-grained packages can otherwise lead to.
 
-- Develop and extract a portiable development workflow that others can adopt and benefit from.
+- Develop and extract a portable development workflow that others can adopt and benefit from.
 
 - Develop solutions to specific problems with an eye toward generality.
 
@@ -86,7 +82,7 @@ $ cd dune/xerosere
 #+end_example
 
 Xerosere provides an =mr= (=myrepos=) file [[file:.mrconfig]] to aggregate and manage
-the other various sources in this umbrella.  The path =.mrconfig= will need to be
+the other various sources in this project.  The path =.mrconfig= will need to be
 listed in your =~/.mrtrusted= file.  Then, in a fresh clone of this package, run:
 
 #+begin_example
@@ -102,6 +98,50 @@ Note: =mr= is not required nor is the particular layout or other conventions in
 xerosere.  They are merely the conveniences that remain after other approaches
 were considered and discarded.
 
+** The =xerosere= command
+
+Install the =xerosere= CLI.  Using the copy cloned under =python/xerosere= (editable,
+so local changes to the tool apply immediately):
+
+#+begin_example
+$ uv tool install -e python/xerosere
+$ xerosere --help
+#+end_example
+
+Alternatively install a released version directly:
+
+#+begin_example
+$ uv tool install git+https://github.com/brettviren/xerosere
+#+end_example
+
+=xerosere= is the single entry point for all developer workflows below (it
+replaces the older =./umbrella= script; the two share the same on-disk layout).
+
+** Configuration
+
+=xerosere= reads a small, phased configuration.  Its built-in defaults already
+encode this project's layout, so the only project-local setting needed is the
+name of the active Spack environment.  Create =.xerosere/config.toml= at the
+project root:
+
+#+begin_example
+[env.DEFAULT]
+env_name = "gcc15"
+#+end_example
+
+This selects =extern/envs/gcc15/= (holding =spack.yaml= and its =view/=), with builds
+under =builds/envs/gcc15/= and installs under =installs/envs/gcc15/= -- exactly the
+locations the =./umbrella= default used.  Inspect the fully resolved parameters
+with:
+
+#+begin_example
+$ xerosere config show
+#+end_example
+
+Additional =[env.<name>]= sections may define other environments or build
+variants; select one for a given invocation with =--config-name <name>= (see
+[[*Variant builds via git worktrees][Variant builds]]).
+
 ** Direnv
 
 Xerosere provides a shell-independent direnv file [[file:.envrc]] to auto configure
@@ -114,7 +154,8 @@ $ direnv allow
 #+end_example
 
 It is not required to use direnv and the =.envrc= file can be easily translated
-into other environment setup methods.
+into other environment setup methods.  =xerosere= itself also exports the same
+Spack scope/cache isolation (so =~/.spack/= is never touched) when it runs Spack.
 
 ** Spack
 
@@ -129,8 +170,8 @@ $ spack --version
 1.2.2 (3e19345b6e12f5ff1b874f4059622fc6a1fd804a)
 #+end_example
 
-Spack is configured (via the =.envrc= file) to *never* write to =~/.spack/=.  It will
-instead use directories under =extern/scopes/=.
+Spack is configured (via the =.envrc= file, and by =xerosere= directly) to *never*
+write to =~/.spack/=.  It will instead use directories under =extern/scopes/=.
 
 ** CUDA
 
@@ -160,19 +201,19 @@ https://spack.readthedocs.io/en/v1.2.0/environments_basics.html
 https://spack.readthedocs.io/en/v1.2.0/environments.html
 
 Xerosere provides Spack Environment configurations in =extern/envs/*/spack.yaml=.
-You can see the concrete spec and build it with:
+You can see the concrete spec and build the active environment (=gcc15=) with:
 
 #+begin_example
-$ ./umbrella concretize
-$ ./umbrella install
+$ xerosere spack concretize
+$ xerosere spack install
 #+end_example
 
-The =umbrella= script provides thin wrappers over =spack= with some sane defaults.
-
-This script is the main entry point for all xerosere developer workflows.  For more info:
+These are thin wrappers over =spack= (targeting the environment named by
+=env_name=) with some sane defaults.  Extra arguments pass through, eg =xerosere
+spack install -j 32=.  For the full command reference:
 
 #+begin_example
-$ ./umbrella --help
+$ xerosere --help
 #+end_example
 
 * Developer tasks
@@ -196,20 +237,31 @@ $ spack repo add --scope user extern/repos/edep-simphony-spack/edep_simphony/spa
 Evaluate the results by repeating the pair:
 
 #+begin_example
-$ ./umbrella concretize
-$ ./umbrella install
+$ xerosere spack concretize
+$ xerosere spack install
 #+end_example
 
-** Local umbrella build
+** Local build
 
-This builds local source under =devel/= via a "CMake super build" pattern.  So, it only supports CMake-built pacakges.
+This builds local source under =devel/= via a "CMake super build" pattern.  So, it
+only supports CMake-built packages.
 
 #+begin_example
-$ ./umbrella config
-$ ./umbrella build
+$ xerosere dev config
+$ xerosere dev build
 #+end_example
 
-The default env is named "gcc15" and builds go to =builds/envs/gcc15/= and installs go to =installs/envs/gcc15/=
+The active env is =gcc15= (from =.xerosere/config.toml=); builds go to
+=builds/envs/gcc15/= and installs go to =installs/envs/gcc15/=.  =dev config= runs the
+super-build configure (=cmake -S devel -B builds/envs/gcc15=) and =dev build= runs
+=cmake --build= on it.  Both also accept a single package name to configure/build
+it stand-alone (resolving its siblings from the install prefix), and pass extra
+=-D= flags or cmake options through, eg:
+
+#+begin_example
+$ xerosere dev config wire-cell-toolkit -D WITH_EDEPSIM=yes
+$ xerosere dev build  wire-cell-toolkit
+#+end_example
 
 By default, environment is not munged to use the build so use paths like:
 
@@ -217,9 +269,44 @@ By default, environment is not munged to use the build so use paths like:
 $ ./installs/envs/gcc15/bin/phlexed  --help
 #+end_example
 
+*** CMake variables and variants
+
+Persistent =-D= flags for the whole super-build live in a =[cmake.<name>]= table
+referenced from an =[env.<name>]= section via =cmake_config= (configure step) or
+=cmake_build= (build step); each entry becomes a =-D<key>=<value>=.  On the command
+line, =xerosere dev config -D FOO=BAR= passes extra defines through.
+
+** Variant builds via git worktrees
+
+To build one (or a few) =devel/= packages from a *different git branch* -- while
+sharing the Spack view and every other package -- create a *variant*.  It uses a
+git worktree for the varying package and its own build/install trees:
+
+#+begin_example
+$ xerosere dev variant add spng --pkg wire-cell-toolkit=spng
+$ xerosere --config-name spng dev config
+$ xerosere --config-name spng dev build
+#+end_example
+
+This checks out =wire-cell-toolkit= on branch =spng= into =worktrees/spng/=,
+redirects only that package's super-build source there, and builds into
+=builds/envs/gcc15-spng/= / =installs/envs/gcc15-spng/= against the shared =gcc15=
+view.  A non-local branch is fetched fresh from a remote (=--remote=, default
+=origin=); a branch that exists neither locally nor on that remote is an error
+(add the fork's remote and retry).  Manage variants with:
+
+#+begin_example
+$ xerosere dev variant list
+$ xerosere dev variant remove spng
+#+end_example
+
 ** Spack develop
 
-The =spack develop= scheme is not (yet) in =umbrella=.  Note, it is *stateful* based on issuing the =develop= and =undevelop= commands.  It needs a one-time =develop= registration over all packages to develop.  You may want to use a different env than nominal =gcc15= one.
+The =spack develop= scheme is *not* part of the =xerosere dev= workflow (which uses
+the CMake super-build above).  It is available directly through Spack and is
+*stateful* based on issuing the =develop= and =undevelop= commands.  It needs a
+one-time =develop= registration over all packages to develop.  You may want to
+use a different env than the nominal =gcc15= one.
 
 #+begin_example
 # fish syntax
@@ -227,7 +314,7 @@ $ for p in arrow-hdf dune-daq-types dune-daq-codec dune-daq-hdf dune-daq-arrow-f
          phlex-arrow-common phlex-arrow-hdf wire-cell-arrow wire-cell-phlex \
          wire-cell-phlex-arrow
     spack -e extern/envs/xerosere develop --path $PWD/devel/$p $p@main
-  end 
+  end
 #+end_example
 
 Then concretize:

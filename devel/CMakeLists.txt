@@ -142,7 +142,12 @@ foreach(_dir IN LISTS _entries)
   endforeach()
 
   list(APPEND XEROSERE_PKGS "${_name}")
-  set(XEROSERE_${_name}_SUBDIR "${_dir}")
+  # Source subdir for this package.  Defaults to the discovered directory, but a
+  # variant build may redirect it (eg to a git worktree on another branch) via
+  # -DXEROSERE_<ProjectName>_SUBDIR=<path> (absolute, or relative to devel/).
+  if(NOT DEFINED XEROSERE_${_name}_SUBDIR)
+    set(XEROSERE_${_name}_SUBDIR "${_dir}")
+  endif()
   set(XEROSERE_${_name}_REQS "${_reqs}")
 endforeach()
 
@@ -153,9 +158,16 @@ endforeach()
 # dependency is a requested name that is itself one of the packages we build.
 
 foreach(_name IN LISTS XEROSERE_PKGS)
+  # A SUBDIR override may be absolute (eg a worktree outside devel/) or relative
+  # to devel/; resolve either to an absolute source dir for ExternalProject.
+  if(IS_ABSOLUTE "${XEROSERE_${_name}_SUBDIR}")
+    set(_src "${XEROSERE_${_name}_SUBDIR}")
+  else()
+    set(_src "${CMAKE_CURRENT_SOURCE_DIR}/${XEROSERE_${_name}_SUBDIR}")
+  endif()
   ExternalProject_Add(${_name}
     PREFIX            "${CMAKE_BINARY_DIR}/${_name}"
-    SOURCE_DIR        "${CMAKE_CURRENT_SOURCE_DIR}/${XEROSERE_${_name}_SUBDIR}"
+    SOURCE_DIR        "${_src}"
     INSTALL_DIR       "${XEROSERE_INSTALL_PREFIX}"
     LIST_SEPARATOR    "|"
     CMAKE_GENERATOR   "${XEROSERE_SUB_GENERATOR}"
