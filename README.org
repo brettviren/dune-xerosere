@@ -83,9 +83,10 @@ $ cd dune/xerosere
 
 Xerosere provides an =mr= (=myrepos=) file [[file:.mrconfig]] to aggregate and manage
 the other various sources in this project.  The path =.mrconfig= will need to be
-listed in your =~/.mrtrusted= file.  Then, in a fresh clone of this package, run:
+listed in your =~/.mrtrust= file.  Then, in a fresh clone of this package, run:
 
 #+begin_example
+$ echo "${PWD}/.mrconfig" >> ~/.mrtrust #If within dune/xerosere
 $ mr co
 #+end_example
 
