@@ -10,6 +10,8 @@ extern/envs/*/view
 builds
 deps.*
 installs
+runs
+worktrees
 
 data
 build

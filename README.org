@@ -300,6 +300,34 @@ $ xerosere dev variant list
 $ xerosere dev variant remove spng
 #+end_example
 
+** Run-time environments (rundirs)
+
+Building an env/variant only populates =installs/envs/<env>/=; it does not munge
+your shell.  To *run* an env's binaries, each env/variant gets a direnv-managed
+*rundir* under =runs/envs/<env>/= (mirroring the =installs/= and =builds/= trees).
+Its generated =.envrc= layers the run-time prefixes -- the extern dependency view
+and the install tree -- plus =PHLEX_PLUGIN_PATH= over the project-wide =.envrc=
+(inherited via direnv's =source_up=).  So you just =cd= into a rundir to run:
+
+#+begin_example
+$ cd runs/envs/gcc15-spng     # direnv allow, once
+$ phlexed --help              # runs the spng variant's build
+#+end_example
+
+=xerosere dev variant add= writes the new variant's rundir automatically.  To
+(re)generate rundirs for the base env plus every configured variant (idempotent),
+or for named variants only:
+
+#+begin_example
+$ xerosere dev variant runs           # base env + all variants
+$ xerosere dev variant runs spng      # just this one
+#+end_example
+
+The generated =.envrc= files use no absolute paths: they resolve everything via
+=$PWD=-relative location anchors (=XEROSERE_ENVS=, =XEROSERE_INSTALLS=) that the
+command also assures exist in the top-level =.envrc=.  See
+=python/xerosere/docs/direnv.md= for the full direnv story.
+
 ** Spack develop
 
 The =spack develop= scheme is *not* part of the =xerosere dev= workflow (which uses
